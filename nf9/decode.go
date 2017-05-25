@@ -16,7 +16,7 @@ import (
 	"net"
 	"unsafe"
 
-	"github.com/google/tflow2/convert"
+	"github.com/taktv6/tflow2/convert"
 )
 
 const (

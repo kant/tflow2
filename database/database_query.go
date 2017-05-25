@@ -25,10 +25,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/tflow2/avltree"
-	"github.com/google/tflow2/convert"
-	"github.com/google/tflow2/netflow"
-	"github.com/google/tflow2/stats"
+	"github.com/taktv6/tflow2/avltree"
+	"github.com/taktv6/tflow2/convert"
+	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/stats"
 )
 
 // BreakDownMap defines by what fields data should be broken down in a query

@@ -14,7 +14,7 @@ package ifserver
 import (
 	"sync"
 
-	"github.com/google/tflow2/ipfix"
+	"github.com/taktv6/tflow2/ipfix"
 )
 
 type templateCache struct {

@@ -17,13 +17,13 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/google/tflow2/annotator"
-	"github.com/google/tflow2/database"
-	"github.com/google/tflow2/frontend"
-	"github.com/google/tflow2/ifserver"
-	"github.com/google/tflow2/netflow"
-	"github.com/google/tflow2/nfserver"
-	"github.com/google/tflow2/stats"
+	"github.com/taktv6/tflow2/annotator"
+	"github.com/taktv6/tflow2/database"
+	"github.com/taktv6/tflow2/frontend"
+	"github.com/taktv6/tflow2/ifserver"
+	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/nfserver"
+	"github.com/taktv6/tflow2/stats"
 )
 
 var (

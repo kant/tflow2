@@ -20,10 +20,10 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/glog"
-	"github.com/google/tflow2/convert"
-	"github.com/google/tflow2/ipfix"
-	"github.com/google/tflow2/netflow"
-	"github.com/google/tflow2/stats"
+	"github.com/taktv6/tflow2/convert"
+	"github.com/taktv6/tflow2/ipfix"
+	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/stats"
 )
 
 // fieldMap describes what information is at what index in the slice

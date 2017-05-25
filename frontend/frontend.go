@@ -26,8 +26,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/tflow2/database"
-	"github.com/google/tflow2/stats"
+	"github.com/taktv6/tflow2/database"
+	"github.com/taktv6/tflow2/stats"
 	"github.com/golang/glog"
 )
 

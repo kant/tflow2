@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/tflow2/avltree"
-	"github.com/google/tflow2/netflow"
-	"github.com/google/tflow2/nfserver"
+	"github.com/taktv6/tflow2/avltree"
+	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/nfserver"
 )
 
 // TimeGroup groups all indices to flows of a particular router at a particular

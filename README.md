@@ -8,10 +8,10 @@ https://github.com/taktv6/tflow2*
 
 ## Usage
 
-Quick install with `go get -u github.com/google/tflow2`
-and `go build github.com/google/tflow2`
+Quick install with `go get -u github.com/taktv6/tflow2`
+and `go build github.com/taktv6/tflow2`
 or download a pre-built binary from the
-[releases page](https://github.com/google/tflow2/releases).
+[releases page](https://github.com/taktv6/tflow2/releases).
 
 The release binaries have an additional command, `tflow2 -version`,
 which reports the release version.

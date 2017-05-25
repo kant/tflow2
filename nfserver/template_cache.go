@@ -14,7 +14,7 @@ package nfserver
 import (
 	"sync"
 
-	"github.com/google/tflow2/nf9"
+	"github.com/taktv6/tflow2/nf9"
 )
 
 type templateCache struct {

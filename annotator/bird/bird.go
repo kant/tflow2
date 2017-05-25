@@ -22,8 +22,8 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/glog"
-	"github.com/google/tflow2/netflow"
-	"github.com/google/tflow2/stats"
+	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/stats"
 )
 
 // QueryResult carries all useful information we extracted from a BIRD querys result
