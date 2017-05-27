@@ -27,15 +27,15 @@ these you will always receive an empty result.
 ### Command line arguments
 `-aggregation=int` 
 
-  This is the time window in seconds used for aggregation of flows
+  This is the time window in seconds used for aggregation of flows.
 
 `-alsologtostderr`
 
-  Will send logs to stderr on top
+  Will send logs to stderr on top.
 
 `-anonymize=bool`
 
-  If set to true IP addresses will be replaced with NULL before dumping
+  If set to true, IP addresses will be replaced with NULL before dumping
   flows to disk. Default is false.
 
 `-bgp=bool`
@@ -51,11 +51,11 @@ these you will always receive an empty result.
 
 `-birdSock=path`
 
-  This is the path to the unix domain socket to talk to BIRD
+  This is the path to the unix domain socket to talk to BIRD.
 
 `-birdSock6=path`
 
-  This is the path to the unix domain socket to talk to BIRD6
+  This is the path to the unix domain socket to talk to BIRD6.
 
 `-channelBuffer=int`
 
@@ -73,15 +73,15 @@ these you will always receive an empty result.
 
 `-log_backtrace_at`
 
-  when logging hits line file:N, emit a stack trace (default :0)
+  when logging hits line file:N, emit a stack trace (default :0).
 
 `-log_dir`
 
-  If non-empty, write log files in this directory
+  If non-empty, write log files in this directory.
 
 `-logtostderr`
 
-  log to standard error instead of files
+  log to standard error instead of files.
 
 `-maxage=int`
 
@@ -90,11 +90,11 @@ these you will always receive an empty result.
 
 `-netflow=addr`
 
-  Address to use to receive netflow packets (default ":2055") via UDP
+  Address to use to receive netflow packets (default ":2055") via UDP.
 
 `-ipfix=addr`
 
-  Address to use to receive IPFIX packets (default ":4739") via UDP
+  Address to use to receive IPFIX packets (default ":4739") via UDP.
 
 `-protonums=path`
 
@@ -108,19 +108,19 @@ these you will always receive an empty result.
 
 `-sockreaders=int`
 
-  Num of go routines reading and parsing netflow packets (default 24)
+  Num of go routines reading and parsing netflow packets (default 24).
 
 `-stderrthreshold`
 
-  logs at or above this threshold go to stderr
+  logs at or above this threshold go to stderr.
 
 `-v value`
 
-  log level for V logs
+  log level for V logs.
 
 `-vmodule value`
 
-  comma-separated list of pattern=N settings for file-filtered logging
+  comma-separated list of pattern=N settings for file-filtered logging.
 
 `-web=addr`
 
