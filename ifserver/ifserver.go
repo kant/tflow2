@@ -14,9 +14,11 @@ package ifserver
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/golang/glog"
@@ -60,6 +62,11 @@ type IPFIXServer struct {
 
 	// bgpAugment is used to decide if ASN information from netflow packets should be used
 	bgpAugment bool
+
+	// con is the UDP socket
+	conn *net.UDPConn
+
+	wg sync.WaitGroup
 }
 
 // New creates and starts a new `NetflowServer` instance
@@ -83,6 +90,7 @@ func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *IPFIXSe
 
 	// Create goroutines that read netflow packet and process it
 	for i := 0; i < numReaders; i++ {
+		ifs.wg.Add(numReaders)
 		go func(num int) {
 			ifs.packetWorker(num, con)
 		}(i)
@@ -91,11 +99,20 @@ func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *IPFIXSe
 	return ifs
 }
 
+// Close closes the socket and stops the workers
+func (ifs *IPFIXServer) Close() {
+	ifs.conn.Close()
+	ifs.wg.Wait()
+}
+
 // packetWorker reads netflow packet from socket and handsoff processing to processFlowSets()
 func (ifs *IPFIXServer) packetWorker(identity int, conn *net.UDPConn) {
 	buffer := make([]byte, 8960)
 	for {
 		length, remote, err := conn.ReadFromUDP(buffer)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			glog.Errorf("Error reading from socket: %v", err)
 			continue
@@ -111,6 +128,7 @@ func (ifs *IPFIXServer) packetWorker(identity int, conn *net.UDPConn) {
 
 		ifs.processPacket(remote.IP, buffer[:length])
 	}
+	ifs.wg.Done()
 }
 
 // processPacket takes a raw netflow packet, send it to the decoder, updates template cache
