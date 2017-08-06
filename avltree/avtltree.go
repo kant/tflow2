@@ -159,13 +159,15 @@ func (root *TreeNode) delete(key interface{}) *TreeNode {
 
 		root.height = max(root.left.getHeight(), root.right.getHeight()) + 1
 		balance := root.getBalance()
-		if balance > 1 && root.left.getBalance() >= 0 {
-			return root.rightRotate()
-		} else if balance > 1 && root.left.getBalance() < 0 {
+		if balance > 1 {
+			if root.left.getBalance() >= 0 {
+				return root.rightRotate()
+			}
 			return root.leftRightRotate()
-		} else if balance < -1 && root.right.getBalance() <= 0 {
-			return root.leftRotate()
-		} else if balance < -1 && root.right.getBalance() > 0 {
+		} else if balance < -1 {
+			if root.right.getBalance() <= 0 {
+				return root.leftRotate()
+			}
 			return root.rightLeftRotate()
 		}
 	} else {

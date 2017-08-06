@@ -175,11 +175,12 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 	fm := generateFieldMap(template)
 
 	for _, r := range records {
-		if fm.family == 4 {
+		switch fm.family {
+		case 4:
 			atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
-		} else if fm.family == 6 {
+		case 6:
 			atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
-		} else {
+		default:
 			glog.Warning("Unknown address family")
 			continue
 		}
