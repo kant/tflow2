@@ -18,10 +18,15 @@ import (
 )
 
 func TestTimestampAggr(t *testing.T) {
-	ca := make(chan *netflow.Flow)
-	cb := make(chan *netflow.Flow)
+	outCh := make(chan *netflow.Flow)
 	var aggr int64 = 60
-	go Init(ca, cb, aggr, false, 1)
+	nWorkers := 1
+
+	inCh := make([]chan *netflow.Flow, 0)
+	inCh = append(inCh, make(chan *netflow.Flow))
+
+	a := New(inCh, outCh, nWorkers, aggr, false, "", "", 0)
+	a.Init()
 
 	testData := []struct {
 		ts   int64
@@ -42,8 +47,8 @@ func TestTimestampAggr(t *testing.T) {
 			Timestamp: test.ts,
 		}
 
-		ca <- fl
-		fl = <-cb
+		inCh[0] <- fl
+		fl = <-outCh
 		if fl.Timestamp != test.want {
 			t.Errorf("Input: %d, Got: %d, Expected: %d, ", test.ts, fl.Timestamp, test.want)
 		}
