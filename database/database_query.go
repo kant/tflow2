@@ -295,12 +295,12 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 			}
 			continue
 		case FieldSrcAddr:
-			if net.IP(fl.SrcAddr).String() != net.IP(c.Operand).String() {
+			if !net.IP(fl.SrcAddr).Equal(net.IP(c.Operand)) {
 				return false
 			}
 			continue
 		case FieldDstAddr:
-			if net.IP(fl.DstAddr).String() != net.IP(c.Operand).String() {
+			if !net.IP(fl.DstAddr).Equal(net.IP(c.Operand)) {
 				return false
 			}
 			continue
@@ -315,7 +315,7 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 			}
 			continue
 		case FieldNextHop:
-			if net.IP(fl.NextHop).String() != net.IP(c.Operand).String() {
+			if !net.IP(fl.NextHop).Equal(net.IP(c.Operand)) {
 				return false
 			}
 			continue
