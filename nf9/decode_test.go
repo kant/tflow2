@@ -12,9 +12,10 @@
 package nf9
 
 import (
-	"DEV/src/tflow2/convert"
 	"net"
 	"testing"
+
+	"github.com/taktv6/tflow2/convert"
 )
 
 func TestDecode(t *testing.T) {
