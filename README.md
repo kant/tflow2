@@ -1,5 +1,10 @@
 # tflow2
 
+
+[![Build Status](https://travis-ci.org/taktv6/tflow2.svg?branch=master)](https://travis-ci.org/taktv6/tflow2)
+[![Coverage Status](https://coveralls.io/repos/taktv6/tflow2/badge.svg?branch=master&service=github)](https://coveralls.io/github/taktv6/tflow2?branch=master)
+[![Go ReportCard](http://goreportcard.com/badge/taktv6/tflow2)](http://goreportcard.com/report/taktv6/tflow2)
+
 tflow2 is an in memory netflow version 9 and IPFIX analyzer.
 It is designed for fast arbitrary queries.
 
