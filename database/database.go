@@ -140,7 +140,7 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 	// Check if router entry exists already. If not, create it.
 	timeGroup, ok := fdb.flows[fl.Timestamp][rtr]
 	if !ok {
-		timeGroup := TimeGroup{
+		timeGroup = &TimeGroup{
 			Any:       make(map[int]*avltree.Tree),
 			SrcAddr:   make(map[string]*avltree.Tree),
 			DstAddr:   make(map[string]*avltree.Tree),
@@ -157,7 +157,7 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 			DstPort:   make(map[uint32]*avltree.Tree),
 			Locks:     &LockGroup{},
 		}
-		fdb.flows[fl.Timestamp][rtr] = &timeGroup
+		fdb.flows[fl.Timestamp][rtr] = timeGroup
 	}
 	fdb.lock.Unlock()
 
