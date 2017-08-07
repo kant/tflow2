@@ -112,7 +112,7 @@ const (
 	FieldDstPort   = 14
 )
 
-// translateQuery translates a query from external representation to internal representation
+// translateQuery translates a query from external representation to internal representaion
 func translateQuery(e QueryExt) (Query, error) {
 	var q Query
 	q.Breakdown = e.Breakdown
@@ -236,7 +236,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 		return
 	}
 	if fdb.debug > 1 {
-		glog.Infof("successfully opened file: %s", filename)
+		glog.Infof("sucessfully opened file: %s", filename)
 	}
 	defer fh.Close()
 
@@ -358,23 +358,7 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 	return true
 }
 
-// RunQuery executes a query and returns sends the result as JSON on `w`
-func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
-	queryStart := time.Now()
-	stats.GlobalStats.Queries++
-	var qe QueryExt
-	err := json.Unmarshal([]byte(query), &qe)
-	if err != nil {
-		glog.Warningf("Unable unmarshal json query: %s", query)
-		return nil, err
-	}
-	q, err := translateQuery(qe)
-	if err != nil {
-		glog.Warningf("Unable to translate query")
-		return nil, err
-	}
-
-	// Determine router
+func (fdb *FlowDatabase) getRouter(q *Query) (string, error) {
 	rtr := ""
 	for _, c := range q.Cond {
 		if c.Field == FieldRouter {
@@ -384,13 +368,14 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 	}
 	if rtr == "" {
 		glog.Warningf("Router is mandatory cirteria")
-		return nil, err
+		return "", fmt.Errorf("Router criteria not found")
 	}
 
-	var start int64
-	end := time.Now().Unix()
+	return rtr, nil
+}
 
-	// Determine time window
+func (fdb *FlowDatabase) getStartEndTimes(q *Query) (start int64, end int64, err error) {
+	end = time.Now().Unix()
 	for _, c := range q.Cond {
 		if c.Field != FieldTimestamp {
 			continue
@@ -403,100 +388,96 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 		}
 	}
 
-	// Align start point to `aggregation` raster
+	// Allign start point to `aggregation` raster
 	start = start - (start % fdb.aggregation)
 
-	resSum := &concurrentResSum{}
-	resSum.Values = make(map[string]uint64)
-	resTime := make(map[int64]map[string]uint64)
-	resChannels := make(map[int64]chan map[string]uint64)
+	return
+}
 
-	for ts := start; ts < end; ts += fdb.aggregation {
-		resChannels[ts] = make(chan map[string]uint64)
+func (fdb *FlowDatabase) getResultByTS(resChannels map[int64]chan map[string]uint64, resSum *concurrentResSum, ts int64, q *Query) error {
+	// TODO: Move query validation out of this function (takt)
+	rtr, err := fdb.getRouter(q)
+	if err != nil {
+		return err
+	}
+
+	resChannels[ts] = make(chan map[string]uint64)
+	fdb.lock.RLock()
+	if _, ok := fdb.flows[ts]; !ok {
+		fdb.lock.RUnlock()
+		go fdb.loadFromDisc(ts, rtr, *q, resChannels[ts], resSum)
 		fdb.lock.RLock()
 		if _, ok := fdb.flows[ts]; !ok {
 			fdb.lock.RUnlock()
-			go fdb.loadFromDisc(ts, rtr, q, resChannels[ts], resSum)
-			fdb.lock.RLock()
-			if _, ok := fdb.flows[ts]; !ok {
-				fdb.lock.RUnlock()
-				continue
-			}
+			return nil
 		}
-
-		// candidates keeps a list of all trees that fulfill the queries criteria
-		candidates := make([]*avltree.Tree, 0)
-		for _, c := range q.Cond {
-			if fdb.debug > 1 {
-				glog.Infof("Adding tree to cancidates list: Field: %d, Value: %d", c.Field, c.Operand)
-			}
-			switch c.Field {
-			case FieldTimestamp:
-				continue
-			case FieldRouter:
-				continue
-			case FieldProtocol:
-				candidates = append(candidates, fdb.flows[ts][rtr].Protocol.Get(c.Operand[0]))
-			case FieldSrcAddr:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcAddr.Get(net.IP(c.Operand)))
-			case FieldDstAddr:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstAddr.Get(net.IP(c.Operand)))
-			case FieldIntIn:
-				candidates = append(candidates, fdb.flows[ts][rtr].IntIn.Get(convert.Uint16b(c.Operand)))
-			case FieldIntOut:
-				candidates = append(candidates, fdb.flows[ts][rtr].IntOut.Get(convert.Uint16b(c.Operand)))
-			case FieldNextHop:
-				candidates = append(candidates, fdb.flows[ts][rtr].NextHop.Get(net.IP(c.Operand)))
-			case FieldSrcAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcAs.Get(convert.Uint32b(c.Operand)))
-			case FieldDstAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstAs.Get(convert.Uint32b(c.Operand)))
-			case FieldNextHopAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].NextHopAs.Get(convert.Uint32b(c.Operand)))
-			case FieldSrcPort:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcPort.Get(c.Operand))
-			case FieldDstPort:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstPort.Get(c.Operand))
-			case FieldSrcPfx:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcPfx.Get(c.Operand))
-			case FieldDstPfx:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstPfx.Get(c.Operand))
-			}
-		}
-
-		if len(candidates) == 0 {
-			candidates = append(candidates, fdb.flows[ts][rtr].Any.Get(anyIndex))
-		}
-		fdb.lock.RUnlock()
-
-		go func(candidates []*avltree.Tree, ch chan map[string]uint64, ts int64) {
-			if fdb.debug > 1 {
-				glog.Infof("candidate trees: %d (%d)", len(candidates), ts)
-			}
-
-			// Find common elements of candidate trees
-			res := avltree.Intersection(candidates)
-			if res == nil {
-				glog.Warningf("Intersection result was empty!")
-				res = fdb.flows[ts][rtr].Any.Get(anyIndex)
-			}
-
-			// Breakdown
-			resTime := make(map[string]uint64)
-			res.Each(breakdown, q.Breakdown, resSum, resTime)
-			ch <- resTime
-		}(candidates, resChannels[ts], ts)
 	}
 
-	// Reading results from go routines
-	glog.Infof("Awaiting results from go routines")
-	for ts := start; ts < end; ts += fdb.aggregation {
-		glog.Infof("Waiting for results for ts %d", ts)
-		resTime[ts] = <-resChannels[ts]
+	// candidates keeps a list of all trees that fulfill the queries criteria
+	candidates := make([]*avltree.Tree, 0)
+	for _, c := range q.Cond {
+		if fdb.debug > 1 {
+			glog.Infof("Adding tree to cancidates list: Field: %d, Value: %d", c.Field, c.Operand)
+		}
+		switch c.Field {
+		case FieldTimestamp:
+			continue
+		case FieldRouter:
+			continue
+		case FieldProtocol:
+			candidates = append(candidates, fdb.flows[ts][rtr].Protocol.Get(c.Operand[0]))
+		case FieldSrcAddr:
+			candidates = append(candidates, fdb.flows[ts][rtr].SrcAddr.Get(net.IP(c.Operand)))
+		case FieldDstAddr:
+			candidates = append(candidates, fdb.flows[ts][rtr].DstAddr.Get(net.IP(c.Operand)))
+		case FieldIntIn:
+			candidates = append(candidates, fdb.flows[ts][rtr].IntIn.Get(convert.Uint16b(c.Operand)))
+		case FieldIntOut:
+			candidates = append(candidates, fdb.flows[ts][rtr].IntOut.Get(convert.Uint16b(c.Operand)))
+		case FieldNextHop:
+			candidates = append(candidates, fdb.flows[ts][rtr].NextHop.Get(net.IP(c.Operand)))
+		case FieldSrcAs:
+			candidates = append(candidates, fdb.flows[ts][rtr].SrcAs.Get(convert.Uint32b(c.Operand)))
+		case FieldDstAs:
+			candidates = append(candidates, fdb.flows[ts][rtr].DstAs.Get(convert.Uint32b(c.Operand)))
+		case FieldNextHopAs:
+			candidates = append(candidates, fdb.flows[ts][rtr].NextHopAs.Get(convert.Uint32b(c.Operand)))
+		case FieldSrcPort:
+			candidates = append(candidates, fdb.flows[ts][rtr].SrcPort.Get(c.Operand))
+		case FieldDstPort:
+			candidates = append(candidates, fdb.flows[ts][rtr].DstPort.Get(c.Operand))
+		case FieldSrcPfx:
+			candidates = append(candidates, fdb.flows[ts][rtr].SrcPfx.Get(c.Operand))
+		case FieldDstPfx:
+			candidates = append(candidates, fdb.flows[ts][rtr].DstPfx.Get(c.Operand))
+		}
 	}
-	glog.Infof("Done reading results")
 
-	// Build list of all keys
+	if len(candidates) == 0 {
+		candidates = append(candidates, fdb.flows[ts][rtr].Any.Get(anyIndex))
+	}
+	fdb.lock.RUnlock()
+
+	go func(candidates []*avltree.Tree, ch chan map[string]uint64, ts int64) {
+		glog.Infof("candidate trees: %d (%d)", len(candidates), ts)
+
+		// Find common elements of candidate trees
+		res := avltree.Intersection(candidates)
+		if res == nil {
+			glog.Warningf("Interseciton Result was empty!")
+			res = fdb.flows[ts][rtr].Any.Get(anyIndex)
+		}
+
+		// Breakdown
+		resTime := make(map[string]uint64)
+		res.Each(breakdown, q.Breakdown, resSum, resTime)
+		ch <- resTime
+	}(candidates, resChannels[ts], ts)
+	return nil
+}
+
+func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, q *Query) map[string]int {
+	// keys will hols list of all keys
 	keys := make([]string, 0)
 
 	// Build Tree Bytes -> Key to allow efficient finding of top n flows
@@ -513,20 +494,18 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 		topKeys[v.(string)] = 1
 	}
 
-	// Find all timestamps we have and get them sorted
-	tsTree := avltree.New()
-	for ts := range resTime {
-		tsTree.Insert(ts, ts, int64IsSmaller)
-	}
-	timestamps := tsTree.Dump()
+	return topKeys
+}
 
+func (fdb *FlowDatabase) createJSOutput(topKeys map[string]int, timestamps []interface{}, resTime map[int64]map[string]uint64) [][]string {
 	queryResult := make([][]string, 0)
 
 	// Construct table header
 	headLine := make([]string, 0)
 	headLine = append(headLine, "Time")
-	for _, k := range topKeysList {
-		headLine = append(headLine, k.(string))
+
+	for k := range topKeys {
+		headLine = append(headLine, k)
 	}
 	headLine = append(headLine, "Rest")
 	queryResult = append(queryResult, headLine)
@@ -538,13 +517,21 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 
 		// Top flows
 		buckets := resTime[ts.(int64)]
-		for _, k := range topKeysList {
-			if _, ok := buckets[k.(string)]; !ok {
+		for _, k := range headLine[1 : len(headLine)-1] {
+			if _, ok := buckets[k]; !ok {
 				line = append(line, "0")
 			} else {
-				line = append(line, fmt.Sprintf("%d", buckets[k.(string)]/uint64(fdb.aggregation)*8*uint64(fdb.samplerate)))
+				line = append(line, fmt.Sprintf("%d", buckets[k]/uint64(fdb.aggregation)*8*uint64(fdb.samplerate)))
 			}
 		}
+
+		/*for k := range topKeys {
+			if _, ok := buckets[k]; !ok {
+				line = append(line, "0")
+			} else {
+				line = append(line, fmt.Sprintf("%d", buckets[k]/uint64(fdb.aggregation)*8*uint64(fdb.samplerate)))
+			}
+		}*/
 
 		// Rest
 		var rest uint64
@@ -558,6 +545,63 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 		queryResult = append(queryResult, line)
 	}
 
+	return queryResult
+}
+
+// RunQuery executes a query and returns sends the result as JSON on `w`
+func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
+	queryStart := time.Now()
+	stats.GlobalStats.Queries++
+	var qe QueryExt
+	err := json.Unmarshal([]byte(query), &qe)
+	if err != nil {
+		glog.Warningf("Unable unmarshal json query: %s", query)
+		return nil, err
+	}
+	q, err := translateQuery(qe)
+	if err != nil {
+		glog.Warningf("Unable to translate query")
+		return nil, err
+	}
+
+	start, end, err := fdb.getStartEndTimes(&q)
+	if err != nil {
+		return nil, err
+	}
+
+	resSum := &concurrentResSum{}
+	resSum.Values = make(map[string]uint64)
+	resTime := make(map[int64]map[string]uint64)
+	resChannels := make(map[int64]chan map[string]uint64)
+
+	for ts := start; ts < end; ts += fdb.aggregation {
+		err := fdb.getResultByTS(resChannels, resSum, ts, &q)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Reading results from go routines
+	for ts := start; ts < end; ts += fdb.aggregation {
+		glog.Infof("Waiting for results for ts %d", ts)
+		resTime[ts] = <-resChannels[ts]
+		close(resChannels[ts])
+	}
+	glog.Infof("Done reading results")
+
+	topKeys := fdb.getTopKeys(resSum, &q)
+	for x := range topKeys {
+		fmt.Printf("TopKey: %s\n", x)
+	}
+
+	// Find all timestamps we have and get them sorted
+	tsTree := avltree.New()
+	for ts := range resTime {
+		tsTree.Insert(ts, ts, int64IsSmaller)
+	}
+	timestamps := tsTree.Dump()
+
+	queryResult := fdb.createJSOutput(topKeys, timestamps, resTime)
 	glog.Infof("Query %s took %d ns\n", query, time.Since(queryStart))
 	return queryResult, nil
 }
