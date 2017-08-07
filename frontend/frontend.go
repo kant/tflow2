@@ -128,28 +128,9 @@ func fileHandler(w http.ResponseWriter, r *http.Request, filename string) {
 }
 
 func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
-	query := "{}"
-	for _, p := range strings.Split(r.URL.RawQuery, "&") {
-		parts := strings.SplitN(p, "=", 2)
-		if len(parts) == 0 {
-			glog.Warningf("query was empty")
-			http.Error(w, "query was empty", 400)
-			continue
-		}
-		param := parts[0]
-		value := ""
-		if len(parts) == 2 {
-			value = parts[1]
-		}
-
-		if param == "query" {
-			var err error
-			query, err = url.QueryUnescape(value)
-			if err != nil {
-				glog.Warningf("unable to decode URL parameter query")
-				http.Error(w, "unable to decode URL parameter query", 503)
-			}
-		}
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		query = "{}"
 	}
 
 	output := strings.Replace(fe.indexHTML, "VAR_QUERY", query, -1)
@@ -158,26 +139,8 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	q := ""
-	for _, p := range strings.Split(r.URL.RawQuery, "&") {
-		parts := strings.SplitN(p, "=", 2)
-		param := parts[0]
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
-		}
 
-		if param == "q" {
-			var err error
-			q, err = url.QueryUnescape(value)
-			if err != nil {
-				glog.Warningf("Unable to unescape query: %v", err)
-				http.Error(w, "Unable to unescape query", 400)
-			}
-		}
-	}
-
-	result, err := fe.flowDB.RunQuery(q)
+	result, err := fe.flowDB.RunQuery(r.URL.Query().Get("q"))
 	if err != nil {
 		glog.Errorf("Query failed: %v", err)
 		http.Error(w, "Query failed", 500)
