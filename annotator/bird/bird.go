@@ -66,7 +66,7 @@ type Annotator struct {
 
 	// connectio to BIRD6
 	bird6 *birdCon
-	
+
 	// debug level
 	debug int
 }
@@ -189,13 +189,15 @@ func (a *Annotator) Augment(fl *netflow.Flow) {
 		a.cache.Set(fl.DstAddr, dstRes)
 	}
 
-	fl.SrcPfx = &netflow.Pfx{}
-	fl.SrcPfx.IP = srcRes.Pfx.IP
-	fl.SrcPfx.Mask = srcRes.Pfx.Mask
+	fl.SrcPfx = &netflow.Pfx{
+		IP:   srcRes.Pfx.IP,
+		Mask: srcRes.Pfx.Mask,
+	}
 
-	fl.DstPfx = &netflow.Pfx{}
-	fl.DstPfx.IP = dstRes.Pfx.IP
-	fl.DstPfx.Mask = dstRes.Pfx.Mask
+	fl.DstPfx = &netflow.Pfx{
+		IP:   dstRes.Pfx.IP,
+		Mask: dstRes.Pfx.Mask,
+	}
 
 	fl.SrcAs = srcRes.AS
 	fl.DstAs = dstRes.AS
@@ -312,7 +314,7 @@ func (a *Annotator) gateway() {
 				break
 			}
 		}
-		if res.AS == 0 && a.debug > 2{
+		if res.AS == 0 && a.debug > 2 {
 			glog.Warningf("unable to find AS path for '%v'", query)
 		}
 		a.resC <- &res

@@ -14,9 +14,11 @@ package nfserver
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/golang/glog"
@@ -60,6 +62,11 @@ type NetflowServer struct {
 
 	// bgpAugment is used to decide if ASN information from netflow packets should be used
 	bgpAugment bool
+
+	// con is the UDP socket
+	conn *net.UDPConn
+
+	wg sync.WaitGroup
 }
 
 // New creates and starts a new `NetflowServer` instance
@@ -76,26 +83,37 @@ func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *Netflow
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
 
-	con, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		panic(fmt.Sprintf("Listen: %v", err))
 	}
+	nfs.conn = conn
 
 	// Create goroutines that read netflow packet and process it
+	nfs.wg.Add(numReaders)
 	for i := 0; i < numReaders; i++ {
 		go func(num int) {
-			nfs.packetWorker(num, con)
+			nfs.packetWorker(num)
 		}(i)
 	}
 
 	return nfs
 }
 
+// Close closes the socket and stops the workers
+func (nfs *NetflowServer) Close() {
+	nfs.conn.Close()
+	nfs.wg.Wait()
+}
+
 // packetWorker reads netflow packet from socket and handsoff processing to processFlowSets()
-func (nfs *NetflowServer) packetWorker(identity int, conn *net.UDPConn) {
+func (nfs *NetflowServer) packetWorker(identity int) {
 	buffer := make([]byte, 8960)
 	for {
-		length, remote, err := conn.ReadFromUDP(buffer)
+		length, remote, err := nfs.conn.ReadFromUDP(buffer)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			glog.Errorf("Error reading from socket: %v", err)
 			continue
@@ -111,6 +129,7 @@ func (nfs *NetflowServer) packetWorker(identity int, conn *net.UDPConn) {
 
 		nfs.processPacket(remote.IP, buffer[:length])
 	}
+	nfs.wg.Done()
 }
 
 // processPacket takes a raw netflow packet, send it to the decoder, updates template cache
@@ -156,11 +175,12 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 	fm := generateFieldMap(template)
 
 	for _, r := range records {
-		if fm.family == 4 {
+		switch fm.family {
+		case 4:
 			atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
-		} else if fm.family == 6 {
+		case 6:
 			atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
-		} else {
+		default:
 			glog.Warning("Unknown address family")
 			continue
 		}
