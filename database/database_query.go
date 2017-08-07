@@ -436,36 +436,36 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 			case FieldRouter:
 				continue
 			case FieldProtocol:
-				candidates = append(candidates, fdb.flows[ts][rtr].Protocol[uint32(convert.Uint16b(c.Operand))])
+				candidates = append(candidates, fdb.flows[ts][rtr].Protocol.Get(c.Operand[0]))
 			case FieldSrcAddr:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcAddr[net.IP(c.Operand).String()])
+				candidates = append(candidates, fdb.flows[ts][rtr].SrcAddr.Get(net.IP(c.Operand)))
 			case FieldDstAddr:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstAddr[net.IP(c.Operand).String()])
+				candidates = append(candidates, fdb.flows[ts][rtr].DstAddr.Get(net.IP(c.Operand)))
 			case FieldIntIn:
-				candidates = append(candidates, fdb.flows[ts][rtr].IntIn[uint32(convert.Uint16b(c.Operand))])
+				candidates = append(candidates, fdb.flows[ts][rtr].IntIn.Get(convert.Uint16b(c.Operand)))
 			case FieldIntOut:
-				candidates = append(candidates, fdb.flows[ts][rtr].IntOut[uint32(convert.Uint16b(c.Operand))])
+				candidates = append(candidates, fdb.flows[ts][rtr].IntOut.Get(convert.Uint16b(c.Operand)))
 			case FieldNextHop:
-				candidates = append(candidates, fdb.flows[ts][rtr].NextHop[net.IP(c.Operand).String()])
+				candidates = append(candidates, fdb.flows[ts][rtr].NextHop.Get(net.IP(c.Operand)))
 			case FieldSrcAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcAs[convert.Uint32b(c.Operand)])
+				candidates = append(candidates, fdb.flows[ts][rtr].SrcAs.Get(convert.Uint32b(c.Operand)))
 			case FieldDstAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstAs[convert.Uint32b(c.Operand)])
+				candidates = append(candidates, fdb.flows[ts][rtr].DstAs.Get(convert.Uint32b(c.Operand)))
 			case FieldNextHopAs:
-				candidates = append(candidates, fdb.flows[ts][rtr].NextHopAs[convert.Uint32b(c.Operand)])
+				candidates = append(candidates, fdb.flows[ts][rtr].NextHopAs.Get(convert.Uint32b(c.Operand)))
 			case FieldSrcPort:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcPort[uint32(convert.Uint16b(c.Operand))])
+				candidates = append(candidates, fdb.flows[ts][rtr].SrcPort.Get(c.Operand))
 			case FieldDstPort:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstPort[uint32(convert.Uint16b(c.Operand))])
+				candidates = append(candidates, fdb.flows[ts][rtr].DstPort.Get(c.Operand))
 			case FieldSrcPfx:
-				candidates = append(candidates, fdb.flows[ts][rtr].SrcPfx[string(c.Operand)])
+				candidates = append(candidates, fdb.flows[ts][rtr].SrcPfx.Get(c.Operand))
 			case FieldDstPfx:
-				candidates = append(candidates, fdb.flows[ts][rtr].DstPfx[string(c.Operand)])
+				candidates = append(candidates, fdb.flows[ts][rtr].DstPfx.Get(c.Operand))
 			}
 		}
 
 		if len(candidates) == 0 {
-			candidates = append(candidates, fdb.flows[ts][rtr].Any[0])
+			candidates = append(candidates, fdb.flows[ts][rtr].Any.Get(anyIndex))
 		}
 		fdb.lock.RUnlock()
 
@@ -478,7 +478,7 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 			res := avltree.Intersection(candidates)
 			if res == nil {
 				glog.Warningf("Intersection result was empty!")
-				res = fdb.flows[ts][rtr].Any[0]
+				res = fdb.flows[ts][rtr].Any.Get(anyIndex)
 			}
 
 			// Breakdown
