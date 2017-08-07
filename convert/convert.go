@@ -92,6 +92,13 @@ func Uint32Byte(data uint32) (ret []byte) {
 	return buf.Bytes()
 }
 
+// IntByte converts a int to a byte slice in BigEndian
+func IntByte(data int) (ret []byte) {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, data)
+	return buf.Bytes()
+}
+
 // Int64Byte converts a int64 to a byte slice in BigEndian
 func Int64Byte(data int64) (ret []byte) {
 	buf := new(bytes.Buffer)

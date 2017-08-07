@@ -32,39 +32,20 @@ import (
 // TimeGroup groups all indices to flows of a particular router at a particular
 // time into one object
 type TimeGroup struct {
-	Any       map[int]*avltree.Tree // Workaround: Why a map? Because: cannot assign to flows[fl.Timestamp][rtr].Any
-	SrcAddr   map[string]*avltree.Tree
-	DstAddr   map[string]*avltree.Tree
-	Protocol  map[uint32]*avltree.Tree
-	IntIn     map[uint32]*avltree.Tree
-	IntOut    map[uint32]*avltree.Tree
-	NextHop   map[string]*avltree.Tree
-	SrcAs     map[uint32]*avltree.Tree
-	DstAs     map[uint32]*avltree.Tree
-	NextHopAs map[uint32]*avltree.Tree
-	SrcPfx    map[string]*avltree.Tree
-	DstPfx    map[string]*avltree.Tree
-	SrcPort   map[uint32]*avltree.Tree
-	DstPort   map[uint32]*avltree.Tree
-	Locks     *LockGroup
-}
-
-// LockGroup is a group of locks suitable to lock any particular member of TimeGroup
-type LockGroup struct {
-	Any       sync.RWMutex
-	SrcAddr   sync.RWMutex
-	DstAddr   sync.RWMutex
-	Protocol  sync.RWMutex
-	IntIn     sync.RWMutex
-	IntOut    sync.RWMutex
-	NextHop   sync.RWMutex
-	SrcAs     sync.RWMutex
-	DstAs     sync.RWMutex
-	NextHopAs sync.RWMutex
-	SrcPfx    sync.RWMutex
-	DstPfx    sync.RWMutex
-	SrcPort   sync.RWMutex
-	DstPort   sync.RWMutex
+	Any       *mapTree // Workaround: Why a map? Because: cannot assign to flows[fl.Timestamp][rtr].Any
+	SrcAddr   *mapTree
+	DstAddr   *mapTree
+	Protocol  *mapTree
+	IntIn     *mapTree
+	IntOut    *mapTree
+	NextHop   *mapTree
+	SrcAs     *mapTree
+	DstAs     *mapTree
+	NextHopAs *mapTree
+	SrcPfx    *mapTree
+	DstPfx    *mapTree
+	SrcPort   *mapTree
+	DstPort   *mapTree
 }
 
 // FlowsByTimeRtr holds all keys (and thus is the only way) to our flows
@@ -84,6 +65,8 @@ type FlowDatabase struct {
 	anonymize   bool
 	Input       chan *netflow.Flow
 }
+
+const anyIndex = 0
 
 // New creates a new FlowDatabase and returns a pointer to it
 func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debug int, compLevel int, storage string, anonymize bool) *FlowDatabase {
@@ -141,21 +124,20 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 	timeGroup, ok := fdb.flows[fl.Timestamp][rtr]
 	if !ok {
 		timeGroup = &TimeGroup{
-			Any:       make(map[int]*avltree.Tree),
-			SrcAddr:   make(map[string]*avltree.Tree),
-			DstAddr:   make(map[string]*avltree.Tree),
-			Protocol:  make(map[uint32]*avltree.Tree),
-			IntIn:     make(map[uint32]*avltree.Tree),
-			IntOut:    make(map[uint32]*avltree.Tree),
-			NextHop:   make(map[string]*avltree.Tree),
-			SrcAs:     make(map[uint32]*avltree.Tree),
-			DstAs:     make(map[uint32]*avltree.Tree),
-			NextHopAs: make(map[uint32]*avltree.Tree),
-			SrcPfx:    make(map[string]*avltree.Tree),
-			DstPfx:    make(map[string]*avltree.Tree),
-			SrcPort:   make(map[uint32]*avltree.Tree),
-			DstPort:   make(map[uint32]*avltree.Tree),
-			Locks:     &LockGroup{},
+			Any:       newMapTree(),
+			SrcAddr:   newMapTree(),
+			DstAddr:   newMapTree(),
+			Protocol:  newMapTree(),
+			IntIn:     newMapTree(),
+			IntOut:    newMapTree(),
+			NextHop:   newMapTree(),
+			SrcAs:     newMapTree(),
+			DstAs:     newMapTree(),
+			NextHopAs: newMapTree(),
+			SrcPfx:    newMapTree(),
+			DstPfx:    newMapTree(),
+			SrcPort:   newMapTree(),
+			DstPort:   newMapTree(),
 		}
 		fdb.flows[fl.Timestamp][rtr] = timeGroup
 	}
@@ -167,14 +149,8 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 // Add adds flow `fl` to database fdb
 func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	// build indices for map access
-
 	rtrip := net.IP(fl.Router)
 	rtr := rtrip.String()
-	srcAddr := net.IP(fl.SrcAddr).String()
-	dstAddr := net.IP(fl.DstAddr).String()
-	nextHopAddr := net.IP(fl.NextHop).String()
-	srcPfx := fl.SrcPfx.String()
-	dstPfx := fl.DstPfx.String()
 	timeGroup := fdb.getTimeGroup(fl, rtr)
 
 	fdb.lock.RLock()
@@ -184,99 +160,21 @@ func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 		return
 	}
 
-	locks := timeGroup.Locks
-
-	// Start the actual insertion into indices
-	locks.Any.Lock()
-	if timeGroup.Any[0] == nil {
-		timeGroup.Any[0] = avltree.New()
-	}
-	timeGroup.Any[0].Insert(fl, fl, ptrIsSmaller)
-	locks.Any.Unlock()
-
-	locks.SrcAddr.Lock()
-	if timeGroup.SrcAddr[srcAddr] == nil {
-		timeGroup.SrcAddr[srcAddr] = avltree.New()
-	}
-	timeGroup.SrcAddr[srcAddr].Insert(fl, fl, ptrIsSmaller)
-	locks.SrcAddr.Unlock()
-
-	locks.DstAddr.Lock()
-	if timeGroup.DstAddr[dstAddr] == nil {
-		timeGroup.DstAddr[dstAddr] = avltree.New()
-	}
-	timeGroup.DstAddr[dstAddr].Insert(fl, fl, ptrIsSmaller)
-	locks.DstAddr.Unlock()
-
-	locks.Protocol.Lock()
-	if timeGroup.Protocol[fl.Protocol] == nil {
-		timeGroup.Protocol[fl.Protocol] = avltree.New()
-	}
-	timeGroup.Protocol[fl.Protocol].Insert(fl, fl, ptrIsSmaller)
-	locks.Protocol.Unlock()
-
-	locks.IntIn.Lock()
-	if timeGroup.IntIn[fl.IntIn] == nil {
-		timeGroup.IntIn[fl.IntIn] = avltree.New()
-	}
-	timeGroup.IntIn[fl.IntIn].Insert(fl, fl, ptrIsSmaller)
-	locks.IntIn.Unlock()
-
-	locks.IntOut.Lock()
-	if timeGroup.IntOut[fl.IntOut] == nil {
-		timeGroup.IntOut[fl.IntOut] = avltree.New()
-	}
-	timeGroup.IntOut[fl.IntOut].Insert(fl, fl, ptrIsSmaller)
-	locks.IntOut.Unlock()
-
-	locks.NextHop.Lock()
-	if timeGroup.NextHop[nextHopAddr] == nil {
-		timeGroup.NextHop[nextHopAddr] = avltree.New()
-	}
-	timeGroup.NextHop[nextHopAddr].Insert(fl, fl, ptrIsSmaller)
-	locks.NextHop.Unlock()
-
-	locks.SrcAs.Lock()
-	if timeGroup.SrcAs[fl.SrcAs] == nil {
-		timeGroup.SrcAs[fl.SrcAs] = avltree.New()
-	}
-	timeGroup.SrcAs[fl.SrcAs].Insert(fl, fl, ptrIsSmaller)
-	locks.SrcAs.Unlock()
-
-	locks.DstAs.Lock()
-	if timeGroup.DstAs[fl.DstAs] == nil {
-		timeGroup.DstAs[fl.DstAs] = avltree.New()
-	}
-	timeGroup.DstAs[fl.DstAs].Insert(fl, fl, ptrIsSmaller)
-	locks.DstAs.Unlock()
-
-	locks.NextHopAs.Lock()
-	if timeGroup.NextHopAs[fl.NextHopAs] == nil {
-		timeGroup.NextHopAs[fl.NextHopAs] = avltree.New()
-	}
-	timeGroup.NextHopAs[fl.NextHopAs].Insert(fl, fl, ptrIsSmaller)
-	locks.NextHopAs.Unlock()
-
-	locks.SrcPfx.Lock()
-	if timeGroup.SrcPfx[srcPfx] == nil {
-		timeGroup.SrcPfx[srcPfx] = avltree.New()
-	}
-	timeGroup.SrcPfx[srcPfx].Insert(fl, fl, ptrIsSmaller)
-	locks.SrcPfx.Unlock()
-
-	locks.DstPfx.Lock()
-	if timeGroup.DstPfx[dstPfx] == nil {
-		timeGroup.DstPfx[dstPfx] = avltree.New()
-	}
-	timeGroup.DstPfx[dstPfx].Insert(fl, fl, ptrIsSmaller)
-	locks.DstPfx.Unlock()
-
-	locks.SrcPort.Lock()
-	if timeGroup.SrcPort[fl.SrcPort] == nil {
-		timeGroup.SrcPort[fl.SrcPort] = avltree.New()
-	}
-	timeGroup.SrcPort[fl.SrcPort].Insert(fl, fl, ptrIsSmaller)
-	locks.SrcPort.Unlock()
+	// Insert into indices
+	timeGroup.Any.Insert(anyIndex, fl)
+	timeGroup.SrcAddr.Insert(net.IP(fl.SrcAddr), fl)
+	timeGroup.DstAddr.Insert(net.IP(fl.DstAddr), fl)
+	timeGroup.Protocol.Insert(byte(fl.Protocol), fl)
+	timeGroup.IntIn.Insert(uint16(fl.IntIn), fl)
+	timeGroup.IntOut.Insert(uint16(fl.IntOut), fl)
+	timeGroup.NextHop.Insert(net.IP(fl.NextHop), fl)
+	timeGroup.SrcAs.Insert(fl.SrcAs, fl)
+	timeGroup.DstAs.Insert(fl.DstAs, fl)
+	timeGroup.NextHopAs.Insert(fl.NextHopAs, fl)
+	timeGroup.SrcPfx.Insert(fl.SrcPfx.String(), fl)
+	timeGroup.DstPfx.Insert(fl.DstPfx.String(), fl)
+	timeGroup.SrcPort.Insert(fl.SrcPort, fl)
+	timeGroup.DstPort.Insert(fl.DstPort, fl)
 }
 
 // CleanUp deletes all flows from database `fdb` that are older than `maxAge` seconds
@@ -316,7 +214,7 @@ func (fdb *FlowDatabase) Dumper() {
 
 func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 	fdb.lock.RLock()
-	tree := fdb.flows[ts][router].Any[0]
+	tree := fdb.flows[ts][router].Any.Get(anyIndex)
 	fdb.lock.RUnlock()
 
 	flows := &netflow.Flows{}
