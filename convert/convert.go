@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-// IPByteSlice converts a string that contians an IP address into byte slice
+// IPByteSlice converts a string that contains an IP address into byte slice
 func IPByteSlice(ip string) []byte {
 	ret := net.ParseIP(ip)
 	if strings.Contains(ip, ".") {
