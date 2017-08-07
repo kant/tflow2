@@ -79,28 +79,43 @@ function drawChart() {
 
     var url = "/query?q=" + encodeURI(query)
     console.log(url);
-    $.get(url, function(rdata) {
-        console.log(rdata);
-        d = [];
-        d = JSON.parse(rdata);
-        data = google.visualization.arrayToDataTable(d);
 
-        var options = {
-            isStacked: true,
-            title: 'NetFlow bps of top flows',
-            hAxis: {
-                title: 'Time',
-                titleTextStyle: {
-                    color: '#333'
+    $.ajax({
+        type: "GET",
+        url: url,
+        dataType: "text",
+        success: function(rdata) {
+            var lines = rdata.trim().split(/\r\n|\n/);
+            for (var i=0; i < lines.length; i++) {
+                lines[i] = lines[i].split(',');
+
+                // Convert values to integer, skip header and first column
+                if (i > 0) {
+                    for (var j=1; j < lines[i].length; j++) {
+                        lines[i][j] = parseInt(lines[i][j]);
+                    }
                 }
-            },
-            vAxis: {
-                minValue: 0
-            }
-        };
+            }  
 
-        var chart = new google.visualization.AreaChart(document.getElementById('chart_div'));
-        chart.draw(data, options);
+            data = google.visualization.arrayToDataTable(lines);
+
+            var options = {
+                isStacked: true,
+                title: 'NetFlow bps of top flows',
+                hAxis: {
+                    title: 'Time',
+                    titleTextStyle: {
+                        color: '#333'
+                    }
+                },
+                vAxis: {
+                    minValue: 0
+                }
+            };
+
+            var chart = new google.visualization.AreaChart(document.getElementById('chart_div'));
+            chart.draw(data, options);
+        }
     });
 }
 
