@@ -112,7 +112,7 @@ const (
 	FieldDstPort   = 14
 )
 
-// translateQuery translates a query from external representation to internal representaion
+// translateQuery translates a query from external representation to internal representation
 func translateQuery(e QueryExt) (Query, error) {
 	var q Query
 	q.Breakdown = e.Breakdown
@@ -236,7 +236,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 		return
 	}
 	if fdb.debug > 1 {
-		glog.Infof("sucessfully opened file: %s", filename)
+		glog.Infof("successfully opened file: %s", filename)
 	}
 	defer fh.Close()
 
@@ -403,7 +403,7 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 		}
 	}
 
-	// Allign start point to `aggregation` raster
+	// Align start point to `aggregation` raster
 	start = start - (start % fdb.aggregation)
 
 	resSum := &concurrentResSum{}
@@ -477,7 +477,7 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 			// Find common elements of candidate trees
 			res := avltree.Intersection(candidates)
 			if res == nil {
-				glog.Warningf("Interseciton Result was empty!")
+				glog.Warningf("Intersection result was empty!")
 				res = fdb.flows[ts][rtr].Any[0]
 			}
 

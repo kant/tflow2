@@ -177,7 +177,7 @@ func (root *TreeNode) delete(key interface{}) *TreeNode {
 	return root
 }
 
-// isEqual is a generic function that compares a and b of any comprable type
+// isEqual is a generic function that compares a and b of any comparable type
 // return true if a and b are equal, otherwise false
 func isEqual(a interface{}, b interface{}) bool {
 	return a == b
