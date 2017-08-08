@@ -129,82 +129,24 @@ func translateQuery(e QueryExt) (Query, error) {
 			}
 			operand = convert.Int64Byte(int64(op))
 
-		case FieldProtocol:
+		case FieldProtocol, FieldSrcPort, FieldDstPort, FieldIntIn, FieldIntOut:
 			op, err := strconv.Atoi(c.Operand)
 			if err != nil {
 				return q, err
 			}
 			operand = convert.Uint16Byte(uint16(op))
 
-		case FieldSrcPort:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldDstPort:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldSrcAddr:
+		case FieldSrcAddr, FieldDstAddr, FieldRouter, FieldNextHop:
 			operand = convert.IPByteSlice(c.Operand)
 
-		case FieldDstAddr:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldRouter:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldIntIn:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldIntOut:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldNextHop:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldSrcAs:
+		case FieldSrcAs, FieldDstAs, FieldNextHopAs:
 			op, err := strconv.Atoi(c.Operand)
 			if err != nil {
 				return q, err
 			}
 			operand = convert.Uint32Byte(uint32(op))
 
-		case FieldDstAs:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint32Byte(uint32(op))
-
-		case FieldNextHopAs:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint32Byte(uint32(op))
-
-		case FieldSrcPfx:
-			_, pfx, err := net.ParseCIDR(string(c.Operand))
-			if err != nil {
-				return q, err
-			}
-			operand = []byte(pfx.String())
-
-		case FieldDstPfx:
+		case FieldSrcPfx, FieldDstPfx:
 			_, pfx, err := net.ParseCIDR(string(c.Operand))
 			if err != nil {
 				return q, err
@@ -223,7 +165,7 @@ func translateQuery(e QueryExt) (Query, error) {
 }
 
 // loadFromDisc loads netflow data from disk into in memory data structure
-func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch chan map[string]uint64, resSum *concurrentResSum) {
+func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, resSum *concurrentResSum) (map[string]uint64, error) {
 	res := avltree.New()
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
 	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, router)
@@ -232,8 +174,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 		if fdb.debug > 0 {
 			glog.Errorf("unable to open file: %v", err)
 		}
-		ch <- nil
-		return
+		return nil, err
 	}
 	if fdb.debug > 1 {
 		glog.Infof("sucessfully opened file: %s", filename)
@@ -243,16 +184,14 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 	gz, err := gzip.NewReader(fh)
 	if err != nil {
 		glog.Errorf("unable to create gzip reader: %v", err)
-		ch <- nil
-		return
+		return nil, err
 	}
 	defer gz.Close()
 
 	buffer, err := ioutil.ReadAll(gz)
 	if err != nil {
 		glog.Errorf("unable to gunzip: %v", err)
-		ch <- nil
-		return
+		return nil, err
 	}
 
 	// Unmarshal protobuf
@@ -260,8 +199,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 	err = proto.Unmarshal(buffer, &flows)
 	if err != nil {
 		glog.Errorf("unable to unmarshal protobuf: %v", err)
-		ch <- nil
-		return
+		return nil, err
 	}
 
 	if fdb.debug > 1 {
@@ -279,7 +217,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, ch c
 	resTime := make(map[string]uint64)
 	res.Each(breakdown, query.Breakdown, resSum, resTime)
 
-	ch <- resTime
+	return resTime, err
 }
 
 func validateFlow(fl *netflow.Flow, query Query) bool {
@@ -394,23 +332,18 @@ func (fdb *FlowDatabase) getStartEndTimes(q *Query) (start int64, end int64, err
 	return
 }
 
-func (fdb *FlowDatabase) getResultByTS(resChannels map[int64]chan map[string]uint64, resSum *concurrentResSum, ts int64, q *Query) error {
-	// TODO: Move query validation out of this function (takt)
-	rtr, err := fdb.getRouter(q)
-	if err != nil {
-		return err
-	}
-
-	resChannels[ts] = make(chan map[string]uint64)
+func (fdb *FlowDatabase) getResultByTS(resSum *concurrentResSum, ts int64, q *Query, rtr string) map[string]uint64 {
 	fdb.lock.RLock()
-	if _, ok := fdb.flows[ts]; !ok {
-		fdb.lock.RUnlock()
-		go fdb.loadFromDisc(ts, rtr, *q, resChannels[ts], resSum)
-		fdb.lock.RLock()
-		if _, ok := fdb.flows[ts]; !ok {
-			fdb.lock.RUnlock()
-			return nil
-		}
+
+	// timeslot in memory?
+	fdb.lock.RLock()
+	timeGroups, ok := fdb.flows[ts]
+	fdb.lock.RUnlock()
+
+	if !ok {
+		// not in memory, try to load from disk
+		result, _ := fdb.loadFromDisc(ts, rtr, *q, resSum)
+		return result
 	}
 
 	// candidates keeps a list of all trees that fulfill the queries criteria
@@ -425,55 +358,51 @@ func (fdb *FlowDatabase) getResultByTS(resChannels map[int64]chan map[string]uin
 		case FieldRouter:
 			continue
 		case FieldProtocol:
-			candidates = append(candidates, fdb.flows[ts][rtr].Protocol.Get(c.Operand[0]))
+			candidates = append(candidates, timeGroups[rtr].Protocol.Get(c.Operand[0]))
 		case FieldSrcAddr:
-			candidates = append(candidates, fdb.flows[ts][rtr].SrcAddr.Get(net.IP(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].SrcAddr.Get(net.IP(c.Operand)))
 		case FieldDstAddr:
-			candidates = append(candidates, fdb.flows[ts][rtr].DstAddr.Get(net.IP(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].DstAddr.Get(net.IP(c.Operand)))
 		case FieldIntIn:
-			candidates = append(candidates, fdb.flows[ts][rtr].IntIn.Get(convert.Uint16b(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].IntIn.Get(convert.Uint16b(c.Operand)))
 		case FieldIntOut:
-			candidates = append(candidates, fdb.flows[ts][rtr].IntOut.Get(convert.Uint16b(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].IntOut.Get(convert.Uint16b(c.Operand)))
 		case FieldNextHop:
-			candidates = append(candidates, fdb.flows[ts][rtr].NextHop.Get(net.IP(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].NextHop.Get(net.IP(c.Operand)))
 		case FieldSrcAs:
-			candidates = append(candidates, fdb.flows[ts][rtr].SrcAs.Get(convert.Uint32b(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].SrcAs.Get(convert.Uint32b(c.Operand)))
 		case FieldDstAs:
-			candidates = append(candidates, fdb.flows[ts][rtr].DstAs.Get(convert.Uint32b(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].DstAs.Get(convert.Uint32b(c.Operand)))
 		case FieldNextHopAs:
-			candidates = append(candidates, fdb.flows[ts][rtr].NextHopAs.Get(convert.Uint32b(c.Operand)))
+			candidates = append(candidates, timeGroups[rtr].NextHopAs.Get(convert.Uint32b(c.Operand)))
 		case FieldSrcPort:
-			candidates = append(candidates, fdb.flows[ts][rtr].SrcPort.Get(c.Operand))
+			candidates = append(candidates, timeGroups[rtr].SrcPort.Get(c.Operand))
 		case FieldDstPort:
-			candidates = append(candidates, fdb.flows[ts][rtr].DstPort.Get(c.Operand))
+			candidates = append(candidates, timeGroups[rtr].DstPort.Get(c.Operand))
 		case FieldSrcPfx:
-			candidates = append(candidates, fdb.flows[ts][rtr].SrcPfx.Get(c.Operand))
+			candidates = append(candidates, timeGroups[rtr].SrcPfx.Get(c.Operand))
 		case FieldDstPfx:
-			candidates = append(candidates, fdb.flows[ts][rtr].DstPfx.Get(c.Operand))
+			candidates = append(candidates, timeGroups[rtr].DstPfx.Get(c.Operand))
 		}
 	}
 
 	if len(candidates) == 0 {
-		candidates = append(candidates, fdb.flows[ts][rtr].Any.Get(anyIndex))
+		candidates = append(candidates, timeGroups[rtr].Any.Get(anyIndex))
 	}
-	fdb.lock.RUnlock()
 
-	go func(candidates []*avltree.Tree, ch chan map[string]uint64, ts int64) {
-		glog.Infof("candidate trees: %d (%d)", len(candidates), ts)
+	glog.Infof("candidate trees: %d (%d)", len(candidates), ts)
 
-		// Find common elements of candidate trees
-		res := avltree.Intersection(candidates)
-		if res == nil {
-			glog.Warningf("Interseciton Result was empty!")
-			res = fdb.flows[ts][rtr].Any.Get(anyIndex)
-		}
+	// Find common elements of candidate trees
+	res := avltree.Intersection(candidates)
+	if res == nil {
+		glog.Warningf("Interseciton Result was empty!")
+		res = timeGroups[rtr].Any.Get(anyIndex)
+	}
 
-		// Breakdown
-		resTime := make(map[string]uint64)
-		res.Each(breakdown, q.Breakdown, resSum, resTime)
-		ch <- resTime
-	}(candidates, resChannels[ts], ts)
-	return nil
+	// Breakdown
+	resTime := make(map[string]uint64)
+	res.Each(breakdown, q.Breakdown, resSum, resTime)
+	return resTime
 }
 
 func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, q *Query) map[string]int {
@@ -569,24 +498,32 @@ func (fdb *FlowDatabase) RunQuery(query string) ([][]string, error) {
 		return nil, err
 	}
 
+	rtr, err := fdb.getRouter(&q)
+	if err != nil {
+		return nil, err
+	}
+
 	resSum := &concurrentResSum{}
 	resSum.Values = make(map[string]uint64)
 	resTime := make(map[int64]map[string]uint64)
-	resChannels := make(map[int64]chan map[string]uint64)
+	resMtx := sync.Mutex{}
+	resWg := sync.WaitGroup{}
 
 	for ts := start; ts < end; ts += fdb.aggregation {
-		err := fdb.getResultByTS(resChannels, resSum, ts, &q)
-		if err != nil {
-			return nil, err
-		}
+		resWg.Add(1)
+		go func(ts int64) {
+			result := fdb.getResultByTS(resSum, ts, &q, rtr)
+
+			if result != nil {
+				resMtx.Lock()
+				resTime[ts] = result
+				resMtx.Unlock()
+			}
+			resWg.Done()
+		}(ts)
 	}
 
-	// Reading results from go routines
-	for ts := start; ts < end; ts += fdb.aggregation {
-		glog.Infof("Waiting for results for ts %d", ts)
-		resTime[ts] = <-resChannels[ts]
-		close(resChannels[ts])
-	}
+	resWg.Wait()
 	glog.Infof("Done reading results")
 
 	topKeys := fdb.getTopKeys(resSum, &q)
@@ -711,18 +648,10 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 	key = strings.Join(parts[first:last+1], "")
 
 	// Build sum for key
-	if _, ok := buckets[key]; !ok {
-		buckets[key] = fl.Size
-	} else {
-		buckets[key] += fl.Size
-	}
+	buckets[key] += fl.Size
 
 	// Build overall sum
 	sums.Lock.Lock()
-	if _, ok := sums.Values[key]; !ok {
-		sums.Values[key] = fl.Size
-	} else {
-		sums.Values[key] += fl.Size
-	}
+	sums.Values[key] += fl.Size
 	sums.Lock.Unlock()
 }

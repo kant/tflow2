@@ -113,15 +113,18 @@ func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debu
 }
 
 func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
-
 	fdb.lock.Lock()
+	defer fdb.lock.Unlock()
+
 	// Check if timestamp entry exists already. If not, create it.
-	if _, ok := fdb.flows[fl.Timestamp]; !ok {
-		fdb.flows[fl.Timestamp] = make(map[string]*TimeGroup)
+	flows, ok := fdb.flows[fl.Timestamp]
+	if !ok {
+		flows = make(map[string]*TimeGroup)
+		fdb.flows[fl.Timestamp] = flows
 	}
 
 	// Check if router entry exists already. If not, create it.
-	timeGroup, ok := fdb.flows[fl.Timestamp][rtr]
+	timeGroup, ok := flows[rtr]
 	if !ok {
 		timeGroup = &TimeGroup{
 			Any:       newMapTree(),
@@ -139,9 +142,8 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 			SrcPort:   newMapTree(),
 			DstPort:   newMapTree(),
 		}
-		fdb.flows[fl.Timestamp][rtr] = timeGroup
+		flows[rtr] = timeGroup
 	}
-	fdb.lock.Unlock()
 
 	return timeGroup
 }
@@ -177,10 +179,14 @@ func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	timeGroup.DstPort.Insert(fl.DstPort, fl)
 }
 
+func (fdb *FlowDatabase) currentTimeslot() int64 {
+	now := time.Now().Unix()
+	return now - now%fdb.aggregation
+}
+
 // CleanUp deletes all flows from database `fdb` that are older than `maxAge` seconds
 func (fdb *FlowDatabase) CleanUp() {
-	now := time.Now().Unix()
-	now = now - now%fdb.aggregation
+	now := fdb.currentTimeslot()
 
 	fdb.lock.Lock()
 	defer fdb.lock.Unlock()
@@ -197,8 +203,7 @@ func (fdb *FlowDatabase) Dumper() {
 	defer fdb.lock.RUnlock()
 
 	min := atomic.LoadInt64(&fdb.lastDump)
-	now := time.Now().Unix()
-	max := (now - now%fdb.aggregation) - 2*fdb.aggregation
+	max := fdb.currentTimeslot() - 2*fdb.aggregation
 	atomic.StoreInt64(&fdb.lastDump, max)
 
 	for ts := range fdb.flows {
