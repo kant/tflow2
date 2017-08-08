@@ -21,14 +21,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof" // Needed for profiling only
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/database"
 	"github.com/taktv6/tflow2/stats"
-	"github.com/golang/glog"
 )
 
 // Frontend represents the web interface
@@ -146,50 +145,12 @@ func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Query failed", 500)
 	}
 
-	fe.printResult(w, result)
+	w.Header().Set("Content-Type", "text/csv")
+	fe.writeResult(w, result)
 }
 
-func (fe *Frontend) printResult(w http.ResponseWriter, result [][]string) {
-	rows := len(result)
-	if rows == 0 {
-		return
-	}
-	columns := len(result[0])
-
-	fmt.Fprintf(w, "[\n")
-	fmt.Fprintf(w, "[ ")
-	// Send header of table to client
-	for i, val := range result[0] {
-		if i < columns-1 {
-			fmt.Fprintf(w, "\"%s\", ", string(val))
-			continue
-		}
-		fmt.Fprintf(w, "\"%s\"", string(val))
-	}
-	if rows == 1 {
-		fmt.Fprintf(w, "]\n")
-		return
-	}
-	fmt.Fprintf(w, "],\n")
-
-	for i, row := range result[1:] {
-		fmt.Fprintf(w, "[ ")
-		for j, column := range row {
-			if j == 0 {
-				fmt.Fprintf(w, "\"%s\", ", string(column))
-				continue
-			}
-			if j < columns-1 {
-				fmt.Fprintf(w, "%s, ", string(column))
-				continue
-			}
-			fmt.Fprintf(w, "%s", string(column))
-		}
-		if i < rows-2 {
-			fmt.Fprintf(w, "],\n")
-			continue
-		}
-		fmt.Fprintf(w, "]\n")
-	}
-	fmt.Fprintf(w, "]")
+func (fe *Frontend) writeResult(w io.Writer, result [][]string) {
+	writer := csv.NewWriter(w)
+	writer.WriteAll(result)
+	writer.Flush()
 }
