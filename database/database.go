@@ -113,15 +113,18 @@ func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debu
 }
 
 func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
-
 	fdb.lock.Lock()
+	defer fdb.lock.Unlock()
+
 	// Check if timestamp entry exists already. If not, create it.
-	if _, ok := fdb.flows[fl.Timestamp]; !ok {
-		fdb.flows[fl.Timestamp] = make(map[string]*TimeGroup)
+	flows, ok := fdb.flows[fl.Timestamp]
+	if !ok {
+		flows = make(map[string]*TimeGroup)
+		fdb.flows[fl.Timestamp] = flows
 	}
 
 	// Check if router entry exists already. If not, create it.
-	timeGroup, ok := fdb.flows[fl.Timestamp][rtr]
+	timeGroup, ok := flows[rtr]
 	if !ok {
 		timeGroup = &TimeGroup{
 			Any:       newMapTree(),
@@ -139,9 +142,8 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 			SrcPort:   newMapTree(),
 			DstPort:   newMapTree(),
 		}
-		fdb.flows[fl.Timestamp][rtr] = timeGroup
+		flows[rtr] = timeGroup
 	}
-	fdb.lock.Unlock()
 
 	return timeGroup
 }
