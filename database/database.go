@@ -29,25 +29,6 @@ import (
 	"github.com/taktv6/tflow2/nfserver"
 )
 
-// TimeGroup groups all indices to flows of a particular router at a particular
-// time into one object
-type TimeGroup struct {
-	Any       *mapTree // Workaround: Why a map? Because: cannot assign to flows[fl.Timestamp][rtr].Any
-	SrcAddr   *mapTree
-	DstAddr   *mapTree
-	Protocol  *mapTree
-	IntIn     *mapTree
-	IntOut    *mapTree
-	NextHop   *mapTree
-	SrcAs     *mapTree
-	DstAs     *mapTree
-	NextHopAs *mapTree
-	SrcPfx    *mapTree
-	DstPfx    *mapTree
-	SrcPort   *mapTree
-	DstPort   *mapTree
-}
-
 // FlowsByTimeRtr holds all keys (and thus is the only way) to our flows
 type FlowsByTimeRtr map[int64]map[string]*TimeGroup
 
