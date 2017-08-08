@@ -556,47 +556,34 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 	buckets := vals[2].(map[string]uint64)
 	fl := node.Value.(*netflow.Flow)
 
-	// Build format string to build key
-	srcAddr := "_"
-	dstAddr := "_"
-	protocol := "_"
-	intIn := "_"
-	intOut := "_"
-	nextHop := "_"
-	srcAs := "_"
-	dstAs := "_"
-	nextHopAs := "_"
-	srcPfx := "_"
-	dstPfx := "_"
-	srcPort := "_"
-	dstPort := "_"
+	var fields []string
 
 	if bd.SrcAddr {
-		srcAddr = fmt.Sprintf("Src:%s", net.IP(fl.SrcAddr).String())
+		fields = append(fields, fmt.Sprintf("Src:%s", net.IP(fl.SrcAddr).String()))
 	}
 	if bd.DstAddr {
-		dstAddr = fmt.Sprintf("Dst:%s", net.IP(fl.DstAddr).String())
+		fields = append(fields, fmt.Sprintf("Dst:%s", net.IP(fl.DstAddr).String()))
 	}
 	if bd.Protocol {
-		protocol = fmt.Sprintf("Proto:%d", fl.Protocol)
+		fields = append(fields, fmt.Sprintf("Proto:%d", fl.Protocol))
 	}
 	if bd.IntIn {
-		intIn = fmt.Sprintf("IntIn:%d", fl.IntIn)
+		fields = append(fields, fmt.Sprintf("IntIn:%d", fl.IntIn))
 	}
 	if bd.IntOut {
-		intOut = fmt.Sprintf("IntOut:%d", fl.IntOut)
+		fields = append(fields, fmt.Sprintf("IntOut:%d", fl.IntOut))
 	}
 	if bd.NextHop {
-		nextHop = fmt.Sprintf("NH:%s", net.IP(fl.NextHop).String())
+		fields = append(fields, fmt.Sprintf("NH:%s", net.IP(fl.NextHop).String()))
 	}
 	if bd.SrcAsn {
-		srcAs = fmt.Sprintf("SrcAS:%d", fl.SrcAs)
+		fields = append(fields, fmt.Sprintf("SrcAS:%d", fl.SrcAs))
 	}
 	if bd.DstAsn {
-		dstAs = fmt.Sprintf("DstAS:%d", fl.DstAs)
+		fields = append(fields, fmt.Sprintf("DstAS:%d", fl.DstAs))
 	}
 	if bd.NextHopAsn {
-		nextHopAs = fmt.Sprintf("NH_AS:%d", fl.NextHopAs)
+		fields = append(fields, fmt.Sprintf("NH_AS:%d", fl.NextHopAs))
 	}
 	if bd.SrcPfx {
 		if fl.SrcPfx != nil {
@@ -604,9 +591,9 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 				IP:   fl.SrcPfx.IP,
 				Mask: fl.SrcPfx.Mask,
 			}
-			srcPfx = fmt.Sprintf("SrcNet:%s", pfx.String())
+			fields = append(fields, fmt.Sprintf("SrcNet:%s", pfx.String()))
 		} else {
-			srcPfx = fmt.Sprintf("SrcNet:0.0.0.0/0")
+			fields = append(fields, fmt.Sprintf("SrcNet:0.0.0.0/0"))
 		}
 	}
 	if bd.DstPfx {
@@ -615,37 +602,20 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 				IP:   fl.DstPfx.IP,
 				Mask: fl.DstPfx.Mask,
 			}
-			dstPfx = fmt.Sprintf("DstNet:%s", pfx.String())
+			fields = append(fields, fmt.Sprintf("DstNet:%s", pfx.String()))
 		} else {
-			dstPfx = fmt.Sprintf("DstNet:0.0.0.0/0")
+			fields = append(fields, fmt.Sprintf("DstNet:0.0.0.0/0"))
 		}
 	}
 	if bd.SrcPort {
-		srcPort = fmt.Sprintf("SrcPort:%d", fl.SrcPort)
+		fields = append(fields, fmt.Sprintf("SrcPort:%d", fl.SrcPort))
 	}
 	if bd.DstPort {
-		dstPort = fmt.Sprintf("DstPort:%d", fl.DstPort)
+		fields = append(fields, fmt.Sprintf("DstPort:%d", fl.DstPort))
 	}
 
 	// Build key
-	key := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s", srcAddr, dstAddr, protocol, intIn, intOut, nextHop, srcAs, dstAs, nextHopAs, srcPfx, dstPfx, srcPort, dstPort)
-
-	// Remove underscores from key
-	key = strings.Replace(key, ",_,", ",", -1)
-	key = strings.Replace(key, "_,", "", -1)
-	key = strings.Replace(key, ",_", "", -1)
-
-	// Remove leading and trailing commas
-	parts := strings.Split(key, "")
-	first := 0
-	last := len(parts) - 1
-	if parts[0] == "," {
-		first++
-	}
-	if parts[last] == "," {
-		last--
-	}
-	key = strings.Join(parts[first:last+1], "")
+	key := strings.Join(fields, ",")
 
 	// Build sum for key
 	buckets[key] += fl.Size
