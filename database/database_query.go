@@ -129,82 +129,24 @@ func translateQuery(e QueryExt) (Query, error) {
 			}
 			operand = convert.Int64Byte(int64(op))
 
-		case FieldProtocol:
+		case FieldProtocol, FieldSrcPort, FieldDstPort, FieldIntIn, FieldIntOut:
 			op, err := strconv.Atoi(c.Operand)
 			if err != nil {
 				return q, err
 			}
 			operand = convert.Uint16Byte(uint16(op))
 
-		case FieldSrcPort:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldDstPort:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldSrcAddr:
+		case FieldSrcAddr, FieldDstAddr, FieldRouter, FieldNextHop:
 			operand = convert.IPByteSlice(c.Operand)
 
-		case FieldDstAddr:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldRouter:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldIntIn:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldIntOut:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case FieldNextHop:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case FieldSrcAs:
+		case FieldSrcAs, FieldDstAs, FieldNextHopAs:
 			op, err := strconv.Atoi(c.Operand)
 			if err != nil {
 				return q, err
 			}
 			operand = convert.Uint32Byte(uint32(op))
 
-		case FieldDstAs:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint32Byte(uint32(op))
-
-		case FieldNextHopAs:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return q, err
-			}
-			operand = convert.Uint32Byte(uint32(op))
-
-		case FieldSrcPfx:
-			_, pfx, err := net.ParseCIDR(string(c.Operand))
-			if err != nil {
-				return q, err
-			}
-			operand = []byte(pfx.String())
-
-		case FieldDstPfx:
+		case FieldSrcPfx, FieldDstPfx:
 			_, pfx, err := net.ParseCIDR(string(c.Operand))
 			if err != nil {
 				return q, err
