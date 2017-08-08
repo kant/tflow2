@@ -706,18 +706,10 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 	key = strings.Join(parts[first:last+1], "")
 
 	// Build sum for key
-	if _, ok := buckets[key]; !ok {
-		buckets[key] = fl.Size
-	} else {
-		buckets[key] += fl.Size
-	}
+	buckets[key] += fl.Size
 
 	// Build overall sum
 	sums.Lock.Lock()
-	if _, ok := sums.Values[key]; !ok {
-		sums.Values[key] = fl.Size
-	} else {
-		sums.Values[key] += fl.Size
-	}
+	sums.Values[key] += fl.Size
 	sums.Lock.Unlock()
 }
