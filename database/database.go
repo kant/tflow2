@@ -179,14 +179,20 @@ func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	timeGroup.DstPort.Insert(fl.DstPort, fl)
 }
 
-func (fdb *FlowDatabase) currentTimeslot() int64 {
+// CurrentTimeslot returns the beginning of the current timeslot
+func (fdb *FlowDatabase) CurrentTimeslot() int64 {
 	now := time.Now().Unix()
 	return now - now%fdb.aggregation
 }
 
+// AggregationPeriod returns the configured aggregation period
+func (fdb *FlowDatabase) AggregationPeriod() int64 {
+	return fdb.aggregation
+}
+
 // CleanUp deletes all flows from database `fdb` that are older than `maxAge` seconds
 func (fdb *FlowDatabase) CleanUp() {
-	now := fdb.currentTimeslot()
+	now := fdb.CurrentTimeslot()
 
 	fdb.lock.Lock()
 	defer fdb.lock.Unlock()
@@ -203,7 +209,7 @@ func (fdb *FlowDatabase) Dumper() {
 	defer fdb.lock.RUnlock()
 
 	min := atomic.LoadInt64(&fdb.lastDump)
-	max := fdb.currentTimeslot() - 2*fdb.aggregation
+	max := fdb.CurrentTimeslot() - 2*fdb.aggregation
 	atomic.StoreInt64(&fdb.lastDump, max)
 
 	for ts := range fdb.flows {
