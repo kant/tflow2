@@ -175,22 +175,14 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 	}
 	if bd.SrcPfx {
 		if fl.SrcPfx != nil {
-			pfx := net.IPNet{
-				IP:   fl.SrcPfx.IP,
-				Mask: fl.SrcPfx.Mask,
-			}
-			key[FieldSrcPfx] = pfx.String()
+			key[FieldSrcPfx] = fl.SrcPfx.ToIPNet().String()
 		} else {
 			key[FieldSrcPfx] = "0.0.0.0/0"
 		}
 	}
 	if bd.DstPfx {
 		if fl.DstPfx != nil {
-			pfx := net.IPNet{
-				IP:   fl.DstPfx.IP,
-				Mask: fl.DstPfx.Mask,
-			}
-			key[FieldDstPfx] = pfx.String()
+			key[FieldDstPfx] = fl.DstPfx.ToIPNet().String()
 		} else {
 			key[FieldDstPfx] = "0.0.0.0/0"
 		}
