@@ -45,6 +45,12 @@ type QueryCache struct {
 	lock  sync.RWMutex
 }
 
+// Query represents a query to BIRD and encapsulates it with a channel where it's result is expected
+type Query struct {
+	birdQuery string
+	retCh     chan *QueryResult
+}
+
 // birdCon represents a connection to a BIRD instance
 type birdCon struct {
 	sock  string
@@ -55,8 +61,7 @@ type birdCon struct {
 
 // Annotator represents a BIRD based BGP annotator
 type Annotator struct {
-	queryC chan string
-	resC   chan *QueryResult
+	queryC chan *Query
 
 	// cache is used to cache query results
 	cache *QueryCache
@@ -75,8 +80,7 @@ type Annotator struct {
 func NewAnnotator(sock string, sock6 string, debug int) *Annotator {
 	a := &Annotator{
 		cache:  newQueryCache(),
-		queryC: make(chan string),
-		resC:   make(chan *QueryResult),
+		queryC: make(chan *Query),
 		debug:  debug,
 	}
 
@@ -206,27 +210,28 @@ func (a *Annotator) Augment(fl *netflow.Flow) {
 
 // query forms a query, sends it to the processing engine, reads the result and returns it
 func (a *Annotator) query(rtr net.IP, addr net.IP) *QueryResult {
-	query := fmt.Sprintf("show route all for %s protocol nf_%s\n", addr.String(), strings.Replace(rtr.String(), ".", "_", -1))
-	a.queryC <- query
-	return <-a.resC
+	q := Query{
+		birdQuery: fmt.Sprintf("show route all for %s protocol nf_%s\n", addr.String(), strings.Replace(rtr.String(), ".", "_", -1)),
+		retCh:     make(chan *QueryResult),
+	}
+	a.queryC <- &q
+	return <-q.retCh
 }
 
 // gateway starts the main service routine
 func (a *Annotator) gateway() {
-	query := ""
-
 	buf := make([]byte, 1024)
 	for {
 		var res QueryResult
-		query = <-a.queryC
-		if query == "" {
+		query := <-a.queryC
+		if query == nil {
 			continue
 		}
-		data := []byte(query)
+		data := []byte(query.birdQuery)
 
 		// Determine if we are being queried for an IPv4 or an IPv6 address
 		bird := a.bird4
-		if strings.Contains(query, ":") {
+		if strings.Contains(query.birdQuery, ":") {
 			bird = a.bird6
 		}
 
@@ -235,7 +240,7 @@ func (a *Annotator) gateway() {
 		if bird.con == nil {
 			glog.Warningf("skipped annotating flow: BIRD is not connected yet")
 			bird.lock.RUnlock()
-			a.resC <- &res
+			query.retCh <- &res
 			continue
 		}
 
@@ -317,6 +322,6 @@ func (a *Annotator) gateway() {
 		if res.AS == 0 && a.debug > 2 {
 			glog.Warningf("unable to find AS path for '%v'", query)
 		}
-		a.resC <- &res
+		query.retCh <- &res
 	}
 }
