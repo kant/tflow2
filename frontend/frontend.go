@@ -21,14 +21,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof" // Needed for profiling only
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/database"
 	"github.com/taktv6/tflow2/stats"
-	"github.com/golang/glog"
 )
 
 // Frontend represents the web interface
@@ -100,6 +99,8 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 		stats.Varz(w)
 	case "/protocols":
 		fe.getProtocols(w, r)
+	case "/metrics":
+		fe.prometheusHandler(w, r)
 	case "/routers":
 		fileHandler(w, r, "routers.json")
 	case "/tflow2.css":
@@ -140,56 +141,24 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	result, err := fe.flowDB.RunQuery(r.URL.Query().Get("q"))
+	var qe QueryExt
+	err := json.Unmarshal([]byte(r.URL.Query().Get("q")), &qe)
 	if err != nil {
-		glog.Errorf("Query failed: %v", err)
+		http.Error(w, err.Error(), 422)
+		return
+	}
+	q, err := translateQuery(&qe)
+	if err != nil {
+		http.Error(w, "Unable to translate query", 422)
+		return
+	}
+
+	result, err := fe.flowDB.RunQuery(q)
+	if err != nil {
 		http.Error(w, "Query failed", 500)
-	}
-
-	fe.printResult(w, result)
-}
-
-func (fe *Frontend) printResult(w http.ResponseWriter, result [][]string) {
-	rows := len(result)
-	if rows == 0 {
 		return
 	}
-	columns := len(result[0])
 
-	fmt.Fprintf(w, "[\n")
-	fmt.Fprintf(w, "[ ")
-	// Send header of table to client
-	for i, val := range result[0] {
-		if i < columns-1 {
-			fmt.Fprintf(w, "\"%s\", ", string(val))
-			continue
-		}
-		fmt.Fprintf(w, "\"%s\"", string(val))
-	}
-	if rows == 1 {
-		fmt.Fprintf(w, "]\n")
-		return
-	}
-	fmt.Fprintf(w, "],\n")
-
-	for i, row := range result[1:] {
-		fmt.Fprintf(w, "[ ")
-		for j, column := range row {
-			if j == 0 {
-				fmt.Fprintf(w, "\"%s\", ", string(column))
-				continue
-			}
-			if j < columns-1 {
-				fmt.Fprintf(w, "%s, ", string(column))
-				continue
-			}
-			fmt.Fprintf(w, "%s", string(column))
-		}
-		if i < rows-2 {
-			fmt.Fprintf(w, "],\n")
-			continue
-		}
-		fmt.Fprintf(w, "]\n")
-	}
-	fmt.Fprintf(w, "]")
+	w.Header().Set("Content-Type", "text/csv")
+	result.WriteCSV(w)
 }
