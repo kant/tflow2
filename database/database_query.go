@@ -280,7 +280,7 @@ func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, topN int) map[Brea
 	return topKeys
 }
 
-// RunQuery executes a query and returns sends the result as JSON on `w`
+// RunQuery executes a query and returns the result as JSON on `w`
 func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 	queryStart := time.Now()
 	stats.GlobalStats.Queries++
@@ -303,7 +303,7 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 	resMtx := sync.Mutex{}
 	resWg := sync.WaitGroup{}
 
-	for ts := start; ts < end; ts += fdb.aggregation {
+	for ts := start; ts <= end; ts += fdb.aggregation {
 		glog.Infof("RunQuery: start timeslot %d", ts)
 		resWg.Add(1)
 		go func(ts int64) {
