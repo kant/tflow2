@@ -260,6 +260,11 @@ func (fdb *FlowDatabase) getResultByTS(resSum *concurrentResSum, ts int64, q *Qu
 		return result
 	}
 
+	if timeGroups[rtr] == nil {
+		glog.Infof("TG of %s is nil", rtr)
+		return map[BreakdownKey]uint64{}
+	}
+
 	return timeGroups[rtr].filterAndBreakdown(resSum, q)
 }
 
