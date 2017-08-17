@@ -47,12 +47,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		database.Condition{
 			Field:    database.FieldTimestamp,
-			Operator: database.OpGreater,
-			Operand:  convert.Int64Byte(ts),
-		},
-		database.Condition{
-			Field:    database.FieldTimestamp,
-			Operator: database.OpSmaller,
+			Operator: database.OpEqual,
 			Operand:  convert.Int64Byte(ts),
 		},
 	}
