@@ -36,7 +36,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ts := fe.flowDB.CurrentTimeslot()
+	ts := fe.flowDB.CurrentTimeslot() - fe.flowDB.AggregationPeriod()
 
 	// Create conditions for router and timerange
 	query.Cond = []database.Condition{
@@ -48,7 +48,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 		database.Condition{
 			Field:    database.FieldTimestamp,
 			Operator: database.OpGreater,
-			Operand:  convert.Int64Byte(ts - fe.flowDB.AggregationPeriod() - 1),
+			Operand:  convert.Int64Byte(ts),
 		},
 		database.Condition{
 			Field:    database.FieldTimestamp,
