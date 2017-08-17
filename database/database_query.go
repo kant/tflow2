@@ -385,6 +385,9 @@ func (fdb *FlowDatabase) getStartEndTimes(q *Query) (start int64, end int64, err
 			start = int64(convert.Uint64b(c.Operand))
 		case OpSmaller:
 			end = int64(convert.Uint64b(c.Operand))
+		case OpEqual:
+			start = int64(convert.Uint64b(c.Operand))
+			end = start
 		}
 	}
 
