@@ -28,6 +28,8 @@ func createKey(key interface{}) string {
 		return string([]byte{val})
 	case int:
 		return string(convert.IntByte(val))
+	case int64:
+		return string(convert.Int64Byte(val))
 	case uint16:
 		return string(convert.Uint16Byte(val))
 	case uint32:
@@ -38,7 +40,7 @@ func createKey(key interface{}) string {
 		}
 		return string(val.To16())
 	default:
-		panic(fmt.Sprintf("unsupported key: %+v", key))
+		panic(fmt.Sprintf("unsupported key type: %T", key))
 	}
 }
 
