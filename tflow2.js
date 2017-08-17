@@ -177,7 +177,8 @@ function loadInterfaceOptions() {
 }
 
 function loadProtocols() {
-    return $.getJSON("/protocols", function(protocols) {
+    return $.getJSON("/protocols", function(data) {
+        protocols = data;
         for (var k in protocols) {
             availableProtocols.push(protocols[k]);
         }
@@ -189,7 +190,8 @@ function loadProtocols() {
 }
 
 function loadRouters() {
-    return $.getJSON("/routers", function(rtrs) {
+    return $.getJSON("/routers", function(data) {
+        rtrs = data;
         for (var k in rtrs) {
             routers.push(k);
         }

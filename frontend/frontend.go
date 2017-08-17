@@ -99,6 +99,8 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 		stats.Varz(w)
 	case "/protocols":
 		fe.getProtocols(w, r)
+	case "/metrics":
+		fe.prometheusHandler(w, r)
 	case "/routers":
 		fileHandler(w, r, "routers.json")
 	case "/tflow2.css":
@@ -139,18 +141,24 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	result, err := fe.flowDB.RunQuery(r.URL.Query().Get("q"))
+	var qe QueryExt
+	err := json.Unmarshal([]byte(r.URL.Query().Get("q")), &qe)
 	if err != nil {
-		glog.Errorf("Query failed: %v", err)
+		http.Error(w, err.Error(), 422)
+		return
+	}
+	q, err := translateQuery(&qe)
+	if err != nil {
+		http.Error(w, "Unable to translate query", 422)
+		return
+	}
+
+	result, err := fe.flowDB.RunQuery(q)
+	if err != nil {
 		http.Error(w, "Query failed", 500)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/csv")
-	fe.writeResult(w, result)
-}
-
-func (fe *Frontend) writeResult(w io.Writer, result [][]string) {
-	writer := csv.NewWriter(w)
-	writer.WriteAll(result)
-	writer.Flush()
+	result.WriteCSV(w)
 }
