@@ -107,6 +107,8 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 		fileHandler(w, r, "tflow2.css")
 	case "/tflow2.js":
 		fileHandler(w, r, "tflow2.js")
+	case "/papaparse.min.js":
+		fileHandler(w, r, "vendors/papaparse/papaparse.min.js")
 	}
 }
 

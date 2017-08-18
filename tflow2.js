@@ -85,19 +85,26 @@ function drawChart() {
         url: url,
         dataType: "text",
         success: function(rdata) {
-            var lines = rdata.trim().split(/\r\n|\n/);
-            for (var i=0; i < lines.length; i++) {
-                lines[i] = lines[i].split(',');
+            rdata = rdata.trim()
+            pres = Papa.parse(rdata)
 
-                // Convert values to integer, skip header and first column
-                if (i > 0) {
-                    for (var j=1; j < lines[i].length; j++) {
-                        lines[i][j] = parseInt(lines[i][j]);
+            var data = [];
+            for (var i = 0; i < pres.data.length; i++) {
+                for (var j = 0; j < pres.data[i].length; j++) {
+                    if (j == 0) {
+                        data[i] = [];
                     }
+                    x = pres.data[i][j];
+                    if (i != 0) {
+                        if (j != 0) {
+                            x = parseInt(x)
+                        }
+                    }
+                    data[i][j] = x;
                 }
-            }  
+            }
 
-            data = google.visualization.arrayToDataTable(lines);
+            data = google.visualization.arrayToDataTable(data);
 
             var options = {
                 isStacked: true,
