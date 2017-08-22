@@ -26,6 +26,52 @@ type QueryExt struct {
 	TopN      int
 }
 
+func (ext *ConditionExt) toQueryExt() (*database.Condition, error) {
+	var operand []byte
+	fieldNum := database.GetFieldByName(ext.Field)
+
+	switch fieldNum {
+	case database.FieldTimestamp:
+		op, err := strconv.Atoi(ext.Operand)
+		if err != nil {
+			return nil, err
+		}
+		operand = convert.Int64Byte(int64(op))
+
+	case database.FieldProtocol, database.FieldSrcPort, database.FieldDstPort, database.FieldIntIn, database.FieldIntOut:
+		op, err := strconv.Atoi(ext.Operand)
+		if err != nil {
+			return nil, err
+		}
+		operand = convert.Uint16Byte(uint16(op))
+
+	case database.FieldSrcAddr, database.FieldDstAddr, database.FieldRouter, database.FieldNextHop:
+		operand = convert.IPByteSlice(ext.Operand)
+
+	case database.FieldSrcAs, database.FieldDstAs, database.FieldNextHopAs:
+		op, err := strconv.Atoi(ext.Operand)
+		if err != nil {
+			return nil, err
+		}
+		operand = convert.Uint32Byte(uint32(op))
+
+	case database.FieldSrcPfx, database.FieldDstPfx:
+		_, pfx, err := net.ParseCIDR(string(ext.Operand))
+		if err != nil {
+			return nil, err
+		}
+		operand = []byte(pfx.String())
+	default:
+		return nil, fmt.Errorf("unknown field: %s", ext.Field)
+	}
+
+	return &database.Condition{
+		Field:    fieldNum,
+		Operator: ext.Operator,
+		Operand:  operand,
+	}, nil
+}
+
 // translateQuery translates a query from external representation to internal representaion
 func translateQuery(e *QueryExt) (*database.Query, error) {
 	var q database.Query
@@ -33,50 +79,12 @@ func translateQuery(e *QueryExt) (*database.Query, error) {
 	q.TopN = e.TopN
 
 	for _, c := range e.Cond {
-		var operand []byte
+		cond, err := c.toQueryExt()
 
-		fieldNum := database.GetFieldByName(c.Field)
-
-		switch fieldNum {
-		case database.FieldTimestamp:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return nil, err
-			}
-			operand = convert.Int64Byte(int64(op))
-
-		case database.FieldProtocol, database.FieldSrcPort, database.FieldDstPort, database.FieldIntIn, database.FieldIntOut:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return nil, err
-			}
-			operand = convert.Uint16Byte(uint16(op))
-
-		case database.FieldSrcAddr, database.FieldDstAddr, database.FieldRouter, database.FieldNextHop:
-			operand = convert.IPByteSlice(c.Operand)
-
-		case database.FieldSrcAs, database.FieldDstAs, database.FieldNextHopAs:
-			op, err := strconv.Atoi(c.Operand)
-			if err != nil {
-				return nil, err
-			}
-			operand = convert.Uint32Byte(uint32(op))
-
-		case database.FieldSrcPfx, database.FieldDstPfx:
-			_, pfx, err := net.ParseCIDR(string(c.Operand))
-			if err != nil {
-				return nil, err
-			}
-			operand = []byte(pfx.String())
-		default:
-			return nil, fmt.Errorf("unknown field: %s", c.Field)
+		if err != nil {
+			return nil, err
 		}
-
-		q.Cond = append(q.Cond, database.Condition{
-			Field:    fieldNum,
-			Operator: c.Operator,
-			Operand:  operand,
-		})
+		q.Cond = append(q.Cond, *cond)
 	}
 
 	return &q, nil
