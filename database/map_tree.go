@@ -24,6 +24,8 @@ func createKey(key interface{}) string {
 	switch val := key.(type) {
 	case string:
 		return val
+	case []uint8:
+		return string(val)
 	case byte:
 		return string([]byte{val})
 	case int:
