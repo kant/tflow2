@@ -33,7 +33,6 @@ function drawChart() {
     }
 
     var url = "/query?q=" + encodeURI(query)
-    console.log(url);
 
     $.ajax({
         type: "GET",
@@ -89,9 +88,9 @@ function populateForm() {
 
     q = JSON.parse(q);
     $("#topn").val(q.TopN);
-    for (var c in q['Cond']) {
-        var fieldName = q['Cond'][c]['Field'];
-        var operand = q['Cond'][c]['Operand'];
+    for (var c in q.Cond) {
+        var fieldName = q.Cond[c]['Field'];
+        var operand = q.Cond[c]['Operand'];
         if (fieldName == "Router") {
             operand = getRouterById(operand);
             if (operand == null) {
@@ -113,8 +112,8 @@ function populateForm() {
     }
     loadInterfaceOptions();
 
-    for (var f in q['Breakdown']) {
-        $("#bd" + f).prop( "checked", true );
+    for (var f in q.Breakdown) {
+        $("#bd" + q.Breakdown[f]).prop( "checked", true );
     }
 }
 
@@ -229,21 +228,20 @@ function getInterfaceById(router, id) {
 function submitQuery() {
     var query = {
         Cond: [],
-        Breakdown: {},
+        Breakdown: [],
         TopN: parseInt($("#topn").val())
     };
 
-    console.log($("#TimeStart").val());
     var start = new Date($("#TimeStart").val());
     var end = new Date($("#TimeEnd").val());
     start = Math.round(start.getTime() / 1000);
     end = Math.round(end.getTime() / 1000);
-    query['Cond'].push({
+    query.Cond.push({
         Field: "Timestamp",
         Operator: OpGreater,
         Operand: start + ""
     });
-    query['Cond'].push({
+    query.Cond.push({
         Field: "Timestamp",
         Operator: OpSmaller,
         Operand: end + ""
@@ -269,21 +267,19 @@ function submitQuery() {
                 return;
             }
         }
-        query['Cond'].push({
+        query.Cond.push({
             Field: field,
             Operator: OpEqual,
             Operand: tmp + ""
         });
     }
 
-    for (var i = 0; i < bdfields.length; i++) {
-        if (!$("#bd" + bdfields[i]).prop('checked')) {
-            continue;
+    for (var i in bdfields) {
+        if ($("#bd" + bdfields[i]).prop('checked')) {
+            query.Breakdown.push(bdfields[i]);
         }
-        query['Breakdown'][bdfields[i]] = true;
     }
 
-    console.log(query);
     $("#query").val(JSON.stringify(query));
     $("#form").submit();
 }

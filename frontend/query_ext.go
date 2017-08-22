@@ -22,7 +22,7 @@ type ConditionExt struct {
 // QueryExt represents a query in the way it is received from the frontend
 type QueryExt struct {
 	Cond      ConditionsExt
-	Breakdown database.BreakdownFlags
+	Breakdown []string
 	TopN      int
 }
 
@@ -75,9 +75,14 @@ func (ext *ConditionExt) toCondition() (*database.Condition, error) {
 // translateQuery translates a query from external representation to internal representaion
 func translateQuery(e *QueryExt) (*database.Query, error) {
 	var q database.Query
-	q.Breakdown = e.Breakdown
 	q.TopN = e.TopN
 
+	// Translate breakdown
+	if err := q.Breakdown.Set(e.Breakdown); err != nil {
+		return nil, err
+	}
+
+	// Translate conditions
 	for _, c := range e.Cond {
 		cond, err := c.toCondition()
 
