@@ -19,57 +19,12 @@ const OpEqual = 0;
 const OpUnequal = 1;
 const OpSmaller = 2;
 const OpGreater = 3;
-const FieldTimestamp = 0;
-const FieldRouter = 1;
-const FieldSrcAddr = 2;
-const FieldDstAddr = 3;
-const FieldProtocol = 4;
-const FieldIntIn = 5;
-const FieldIntOut = 6;
-const FieldNextHop = 7;
-const FieldSrcAs = 8;
-const FieldDstAs = 9;
-const FieldNextHopAs = 10;
-const FieldSrcPfx = 11;
-const FieldDstPfx = 12;
-const FieldSrcPort = 13;
-const FieldDstPort = 14;
-const fields = {
-        "Router": 1,
-        "SrcAddr": 2,
-        "DstAddr": 3,
-        "Protocol": 4,
-        "IntIn": 5,
-        "IntOut": 6,
-        "NextHop": 7,
-        "SrcAsn": 8,
-        "DstAsn": 9,
-        "NextHopAsn": 10,
-        "SrcPfx": 11,
-        "DstPfx": 12,
-        "SrcPort": 13,
-        "DstPort": 14,
-};
-const fieldById = {
-    "1": "Router",
-    "2": "SrcAddr",
-    "3": "DstAddr",
-    "4": "Protocol",
-    "5": "IntIn",
-    "6": "IntOut",
-    "7": "NextHop",
-    "8": "SrcAsn",
-    "9": "DstAsn",
-    "10": "NextHopAsn",
-    "11": "SrcPfx",
-    "12": "DstPfx",
-    "13": "SrcPort",
-    "14": "DstPort"
-};
 
 var bdfields = [
         "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn",
         "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort" ];
+
+var fields = ["Router"].concat(bdfields)
 
 function drawChart() {
     var query = $("#query").val();
@@ -135,20 +90,19 @@ function populateForm() {
     q = JSON.parse(q);
     $("#topn").val(q.TopN);
     for (var c in q['Cond']) {
-        var fieldNum = q['Cond'][c]['Field'];
-        var fieldName = fieldById[fieldNum];
+        var fieldName = q['Cond'][c]['Field'];
         var operand = q['Cond'][c]['Operand'];
-        if (fieldNum == FieldRouter) {
+        if (fieldName == "Router") {
             operand = getRouterById(operand);
             if (operand == null) {
                 return;
             }
-        } else if (fieldNum == FieldIntIn || fieldNum == FieldIntOut) {
+        } else if (fieldName == "IntIn" || fieldName == "IntOut") {
             operand = getInterfaceById($("#Router").val(), operand);
             if (operand == null) {
                 return;
             }
-        } else if (fieldNum == FieldProtocol) {
+        } else if (fieldName == "Protocol") {
             operand = protocols[operand];
             if (operand == null) {
                 return;
@@ -285,36 +239,38 @@ function submitQuery() {
     start = Math.round(start.getTime() / 1000);
     end = Math.round(end.getTime() / 1000);
     query['Cond'].push({
-        Field: FieldTimestamp,
+        Field: "Timestamp",
         Operator: OpGreater,
         Operand: start + ""
     });
     query['Cond'].push({
-        Field: FieldTimestamp,
+        Field: "Timestamp",
         Operator: OpSmaller,
         Operand: end + ""
     });
 
     for (var k in fields) {
-        tmp = $("#" + k).val();
+        field = fields[k]
+
+        tmp = $("#" + field).val();
         if (tmp == "") {
             continue;
         }
-        if (k == "Router") {
+        if (field == "Router") {
             tmp = rtrs[tmp]['id'];
-        } else if (k == "IntIn" || k == "IntOut") {
+        } else if (field == "IntIn" || field == "IntOut") {
             tmp = getIntId($("#Router").val(), tmp)
             if (tmp == null) {
                 return;
             }
-        } else if (k == "Protocol") {
+        } else if (field == "Protocol") {
             tmp = getProtocolId(tmp);
             if (tmp == null) {
                 return;
             }
         }
         query['Cond'].push({
-            Field: fields[k],
+            Field: field,
             Operator: OpEqual,
             Operand: tmp + ""
         });

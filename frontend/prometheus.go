@@ -1,8 +1,11 @@
 package frontend
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
@@ -17,26 +20,54 @@ const prefix = "tflow_"
 func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	query := database.Query{}
+	var errs []error
 
 	// Parse and assign breakdown
 	breakdown := strings.Split(params.Get("breakdown"), ",")
-	if len(breakdown) == 0 {
-		http.Error(w, "breakdown parameter missing", 422)
-		return
+
+	var breakDownError error
+	if len(breakdown) == 1 && breakdown[0] == "" {
+		breakDownError = errors.New("breakdown parameter missing")
+	} else if err := query.Breakdown.Set(breakdown); err != nil {
+		breakDownError = fmt.Errorf("breakdown parameter invalid: %s", err)
 	}
-	if err := query.Breakdown.Set(breakdown); err != nil {
-		http.Error(w, fmt.Sprintf("breakdown parameter invalid: %s", err), 422)
-		return
+	if breakDownError != nil {
+		buf := &bytes.Buffer{}
+		fmt.Fprintf(buf, "%s\n", breakDownError)
+		fmt.Fprintf(buf, "please pass a comma separated list of:\n")
+		for _, label := range database.GetBreakdownLabels() {
+			fmt.Fprintf(buf, "- %s\n", label)
+		}
+		errs = append(errs, errors.New(buf.String()))
 	}
 
 	// Fetch router parameter
 	router := params.Get("router")
 	if router == "" {
-		http.Error(w, "router parameter missing", 422)
-		return
+		errs = append(errs, errors.New("router parameter missing"))
 	}
 
-	ts := fe.flowDB.CurrentTimeslot() - fe.flowDB.AggregationPeriod()
+	var ts int64
+
+	// Optional timestamp
+	if val := params.Get("ts"); val != "" {
+		var err error
+		ts, err = strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("unable to parse ts: %s", err.Error()))
+			return
+		}
+	} else {
+		ts = fe.flowDB.CurrentTimeslot() - fe.flowDB.AggregationPeriod()
+	}
+
+	if len(errs) > 0 {
+		http.Error(w, "Invalid parameters\n", 422)
+		for _, err := range errs {
+			fmt.Fprintln(w, err.Error())
+		}
+		return
+	}
 
 	// Create conditions for router and timerange
 	query.Cond = []database.Condition{
@@ -56,6 +87,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := fe.flowDB.RunQuery(&query)
 	if err != nil {
 		http.Error(w, "Query failed: "+err.Error(), 502)
+		return
 	}
 
 	// Create a new collector and pass it to Prometheus for handling

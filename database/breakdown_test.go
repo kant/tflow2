@@ -23,7 +23,7 @@ func TestBreakdownKeyString(t *testing.T) {
 	for i := range breakdownLabels {
 		key[i] = strconv.Itoa(i)
 	}
-	assert.Equal("Src:2,Dst:3,Proto:4,IntIn:5,IntOut:6,NH:7,SrcAsn:8,DstAsn:9,NH_AS:10,SrcNet:11,DstNet:12,SrcPort:13,DstPort:14", key.String())
+	assert.Equal("SrcAddr:6,DstAddr:7,Protocol:8,IntIn:9,IntOut:10,NextHop:11,SrcAsn:12,DstAsn:13,NextHopAsn:14,SrcPfx:15,DstPfx:16,SrcPort:17,DstPort:18", key.String())
 }
 
 func TestBreakdownFlags(t *testing.T) {
@@ -39,4 +39,12 @@ func TestBreakdownFlags(t *testing.T) {
 
 	// Invalid key
 	assert.EqualError(key.Set([]string{"foobar"}), "invalid breakdown key: foobar")
+}
+
+func TestGetBreakdownLabels(t *testing.T) {
+	assert := assert.New(t)
+
+	labels := GetBreakdownLabels()
+	assert.NotNil(labels)
+	assert.Contains(labels, "SrcAddr")
 }

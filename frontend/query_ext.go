@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 
@@ -13,7 +14,7 @@ type ConditionsExt []ConditionExt
 
 // ConditionExt is external representation of a query condition
 type ConditionExt struct {
-	Field    int
+	Field    string
 	Operator int
 	Operand  string
 }
@@ -34,7 +35,9 @@ func translateQuery(e *QueryExt) (*database.Query, error) {
 	for _, c := range e.Cond {
 		var operand []byte
 
-		switch c.Field {
+		fieldNum := database.GetFieldByName(c.Field)
+
+		switch fieldNum {
 		case database.FieldTimestamp:
 			op, err := strconv.Atoi(c.Operand)
 			if err != nil {
@@ -65,10 +68,12 @@ func translateQuery(e *QueryExt) (*database.Query, error) {
 				return nil, err
 			}
 			operand = []byte(pfx.String())
+		default:
+			return nil, fmt.Errorf("unknown field: %s", c.Field)
 		}
 
 		q.Cond = append(q.Cond, database.Condition{
-			Field:    c.Field,
+			Field:    fieldNum,
 			Operator: c.Operator,
 			Operand:  operand,
 		})

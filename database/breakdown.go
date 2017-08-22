@@ -36,19 +36,38 @@ type BreakdownFlags struct {
 }
 
 var breakdownLabels = map[int]string{
-	FieldSrcAddr:   "Src",
-	FieldDstAddr:   "Dst",
-	FieldProtocol:  "Proto",
+	FieldSrcAddr:   "SrcAddr",
+	FieldDstAddr:   "DstAddr",
+	FieldProtocol:  "Protocol",
 	FieldIntIn:     "IntIn",
 	FieldIntOut:    "IntOut",
-	FieldNextHop:   "NH",
+	FieldNextHop:   "NextHop",
 	FieldSrcAs:     "SrcAsn",
 	FieldDstAs:     "DstAsn",
-	FieldNextHopAs: "NH_AS",
-	FieldSrcPfx:    "SrcNet",
-	FieldDstPfx:    "DstNet",
+	FieldNextHopAs: "NextHopAsn",
+	FieldSrcPfx:    "SrcPfx",
+	FieldDstPfx:    "DstPfx",
 	FieldSrcPort:   "SrcPort",
 	FieldDstPort:   "DstPort",
+}
+
+// GetBreakdownLabels returns a sorted list of known breakdown labels
+func GetBreakdownLabels() []string {
+	return []string{
+		breakdownLabels[FieldSrcAddr],
+		breakdownLabels[FieldDstAddr],
+		breakdownLabels[FieldProtocol],
+		breakdownLabels[FieldIntIn],
+		breakdownLabels[FieldIntOut],
+		breakdownLabels[FieldNextHop],
+		breakdownLabels[FieldSrcAs],
+		breakdownLabels[FieldDstAs],
+		breakdownLabels[FieldNextHopAs],
+		breakdownLabels[FieldSrcPfx],
+		breakdownLabels[FieldDstPfx],
+		breakdownLabels[FieldSrcPort],
+		breakdownLabels[FieldDstPort],
+	}
 }
 
 // reverse mapping for breakdownLabels
@@ -58,7 +77,7 @@ func breakdownIndex(key string) int {
 			return i
 		}
 	}
-	return -1
+	panic("invalid breakdown label: " + key)
 }
 
 // Set sets the value of a field
