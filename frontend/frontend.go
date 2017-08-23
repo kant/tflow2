@@ -161,6 +161,11 @@ func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(result.Data) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/csv")
 	result.WriteCSV(w)
 }
