@@ -12,6 +12,7 @@ func TestCreateKey(t *testing.T) {
 
 	assert.Equal("test", createKey("test"))
 	assert.Equal("\x17", createKey(byte(23)))
+	assert.Equal("\x17\x2a", createKey([]uint8{23, 42}))
 	assert.Equal("\x00\x00\x00\x00\x00\x00\x00\x17", createKey(int64(23)))
 	assert.Equal("\x00\x00\x00\x17", createKey(uint32(23)))
 	assert.Equal("\x01\x02\x03\x04", createKey(net.IP{1, 2, 3, 4}))
