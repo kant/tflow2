@@ -26,7 +26,7 @@ type QueryExt struct {
 	TopN      int
 }
 
-func (ext *ConditionExt) toQueryExt() (*database.Condition, error) {
+func (ext *ConditionExt) toCondition() (*database.Condition, error) {
 	var operand []byte
 	fieldNum := database.GetFieldByName(ext.Field)
 
@@ -79,7 +79,7 @@ func translateQuery(e *QueryExt) (*database.Query, error) {
 	q.TopN = e.TopN
 
 	for _, c := range e.Cond {
-		cond, err := c.toQueryExt()
+		cond, err := c.toCondition()
 
 		if err != nil {
 			return nil, err
