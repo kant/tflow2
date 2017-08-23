@@ -72,26 +72,6 @@ func GetBreakdownLabels() []string {
 	}
 }
 
-// reverse mapping for breakdownLabels
-func breakdownIndex(key string) int {
-	for i, k := range breakdownLabels {
-		if k == key {
-			return i
-		}
-	}
-	panic("invalid breakdown label: " + key)
-}
-
-// Set Sets the value of a field
-func (bk *BreakdownKey) set(key string, value string) {
-	bk[breakdownIndex(key)] = value
-}
-
-// get returns the value of a field
-func (bk *BreakdownKey) get(key string) string {
-	return bk[breakdownIndex(key)]
-}
-
 // Each calls the given function for each attribute that has a value
 func (bk *BreakdownKey) Each(cb func(string, string)) {
 	for i, value := range bk {
