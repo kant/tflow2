@@ -38,7 +38,11 @@ function drawChart() {
         type: "GET",
         url: url,
         dataType: "text",
-        success: function(rdata) {
+        success: function(rdata, status, xhr) {
+            if (rdata == undefined) {
+                $("#chart_div").text("No data found")
+                return
+            }
             rdata = rdata.trim()
             pres = Papa.parse(rdata)
 
@@ -76,6 +80,9 @@ function drawChart() {
 
             var chart = new google.visualization.AreaChart(document.getElementById('chart_div'));
             chart.draw(data, options);
+        },
+        error: function(xhr){
+            $("#chart_div").text(xhr.responseText)
         }
     });
 }
