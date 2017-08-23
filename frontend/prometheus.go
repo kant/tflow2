@@ -58,7 +58,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(errs) > 0 {
-		http.Error(w, "Invalid parameters\n", 422)
+		http.Error(w, "Invalid parameters\n", http.StatusUnprocessableEntity)
 		for _, err := range errs {
 			fmt.Fprintln(w, err.Error())
 		}
@@ -82,13 +82,13 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 	// Run the query
 	result, err := fe.flowDB.RunQuery(&query)
 	if err != nil {
-		http.Error(w, "Query failed: "+err.Error(), 502)
+		http.Error(w, "Query failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Empty result?
 	if len(result.Timestamps) == 0 {
-		http.Error(w, "No data found", 404)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
