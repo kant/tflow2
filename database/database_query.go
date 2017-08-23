@@ -34,7 +34,10 @@ const (
 	OpUnequal = 1
 	OpSmaller = 2
 	OpGreater = 3
+)
 
+// These constants are only used internally
+const (
 	FieldTimestamp = iota
 	FieldRouter
 	FieldSrcAddr

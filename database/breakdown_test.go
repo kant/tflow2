@@ -23,7 +23,7 @@ func TestBreakdownKeyString(t *testing.T) {
 	for i := range breakdownLabels {
 		key[i] = strconv.Itoa(i)
 	}
-	assert.Equal("SrcAddr:6,DstAddr:7,Protocol:8,IntIn:9,IntOut:10,NextHop:11,SrcAsn:12,DstAsn:13,NextHopAsn:14,SrcPfx:15,DstPfx:16,SrcPort:17,DstPort:18", key.String())
+	assert.Equal("SrcAddr:2,DstAddr:3,Protocol:4,IntIn:5,IntOut:6,NextHop:7,SrcAsn:8,DstAsn:9,NextHopAsn:10,SrcPfx:11,DstPfx:12,SrcPort:13,DstPort:14", key.String())
 }
 
 func TestBreakdownFlags(t *testing.T) {
