@@ -82,14 +82,23 @@ func breakdownIndex(key string) int {
 	panic("invalid breakdown label: " + key)
 }
 
-// Set sets the value of a field
-func (bk *BreakdownKey) Set(key string, value string) {
+// Set Sets the value of a field
+func (bk *BreakdownKey) set(key string, value string) {
 	bk[breakdownIndex(key)] = value
 }
 
-// Get returns the value of a field
-func (bk *BreakdownKey) Get(key string) string {
+// get returns the value of a field
+func (bk *BreakdownKey) get(key string) string {
 	return bk[breakdownIndex(key)]
+}
+
+// Each calls the given function for each attribute that has a value
+func (bk *BreakdownKey) Each(cb func(string, string)) {
+	for i, value := range bk {
+		if value != "" {
+			cb(breakdownLabels[i], value)
+		}
+	}
 }
 
 // String builds a textual representation of the key

@@ -15,8 +15,8 @@ func TestBreakdownKeyString(t *testing.T) {
 	assert.Equal("", key.String())
 
 	// Set one key
-	key.Set("DstPort", "23")
-	assert.Equal(key.Get("DstPort"), "23")
+	key.set("DstPort", "23")
+	assert.Equal(key.get("DstPort"), "23")
 	assert.Equal("DstPort:23", key.String())
 
 	// Set all keys
