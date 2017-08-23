@@ -40,6 +40,7 @@ const (
 const (
 	FieldTimestamp = iota
 	FieldRouter
+	FieldFamily
 	FieldSrcAddr
 	FieldDstAddr
 	FieldProtocol
@@ -59,6 +60,7 @@ const (
 var fieldNames = map[string]int{
 	"Timestamp": FieldTimestamp,
 	"Router":    FieldRouter,
+	"Family":    FieldFamily,
 	"SrcAddr":   FieldSrcAddr,
 	"DstAddr":   FieldDstAddr,
 	"Protocol":  FieldProtocol,
@@ -168,6 +170,11 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 		case FieldTimestamp:
 			continue
 		case FieldRouter:
+			continue
+		case FieldFamily:
+			if fl.Family != uint32(convert.Uint16b(c.Operand)) {
+				return false
+			}
 			continue
 		case FieldProtocol:
 			if fl.Protocol != uint32(convert.Uint16b(c.Operand)) {

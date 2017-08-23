@@ -36,6 +36,7 @@ type BreakdownFlags struct {
 }
 
 var breakdownLabels = map[int]string{
+	FieldFamily:    "Family",
 	FieldSrcAddr:   "SrcAddr",
 	FieldDstAddr:   "DstAddr",
 	FieldProtocol:  "Protocol",
@@ -54,6 +55,7 @@ var breakdownLabels = map[int]string{
 // GetBreakdownLabels returns a sorted list of known breakdown labels
 func GetBreakdownLabels() []string {
 	return []string{
+		breakdownLabels[FieldFamily],
 		breakdownLabels[FieldSrcAddr],
 		breakdownLabels[FieldDstAddr],
 		breakdownLabels[FieldProtocol],
@@ -113,35 +115,35 @@ func (bk *BreakdownKey) String() string {
 func (bf *BreakdownFlags) Set(keys []string) error {
 	for _, key := range keys {
 		switch key {
-		case "Router":
+		case breakdownLabels[FieldRouter]:
 			bf.Router = true
-		case "Family":
+		case breakdownLabels[FieldFamily]:
 			bf.Family = true
-		case "SrcAddr":
+		case breakdownLabels[FieldSrcAddr]:
 			bf.SrcAddr = true
-		case "DstAddr":
+		case breakdownLabels[FieldDstAddr]:
 			bf.DstAddr = true
-		case "Protocol":
+		case breakdownLabels[FieldProtocol]:
 			bf.Protocol = true
-		case "IntIn":
+		case breakdownLabels[FieldIntIn]:
 			bf.IntIn = true
-		case "IntOut":
+		case breakdownLabels[FieldIntOut]:
 			bf.IntOut = true
-		case "NextHop":
+		case breakdownLabels[FieldNextHop]:
 			bf.NextHop = true
-		case "SrcAsn":
+		case breakdownLabels[FieldSrcAs]:
 			bf.SrcAsn = true
-		case "DstAsn":
+		case breakdownLabels[FieldDstAs]:
 			bf.DstAsn = true
-		case "NextHopAsn":
+		case breakdownLabels[FieldNextHopAs]:
 			bf.NextHopAsn = true
-		case "SrcPfx":
+		case breakdownLabels[FieldSrcPfx]:
 			bf.SrcPfx = true
-		case "DstPfx":
+		case breakdownLabels[FieldDstPfx]:
 			bf.DstPfx = true
-		case "SrcPort":
+		case breakdownLabels[FieldSrcPort]:
 			bf.SrcPort = true
-		case "DstPort":
+		case breakdownLabels[FieldDstPort]:
 			bf.DstPort = true
 		default:
 			return fmt.Errorf("invalid breakdown key: %s", key)
@@ -165,6 +167,9 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 
 	key := BreakdownKey{}
 
+	if bd.Family {
+		key[FieldFamily] = fmt.Sprintf("%d", fl.Family)
+	}
 	if bd.SrcAddr {
 		key[FieldSrcAddr] = net.IP(fl.SrcAddr).String()
 	}
