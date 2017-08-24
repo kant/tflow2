@@ -36,39 +36,49 @@ type BreakdownFlags struct {
 }
 
 var breakdownLabels = map[int]string{
-	FieldSrcAddr:   "Src",
-	FieldDstAddr:   "Dst",
-	FieldProtocol:  "Proto",
+	FieldFamily:    "Family",
+	FieldSrcAddr:   "SrcAddr",
+	FieldDstAddr:   "DstAddr",
+	FieldProtocol:  "Protocol",
 	FieldIntIn:     "IntIn",
 	FieldIntOut:    "IntOut",
-	FieldNextHop:   "NH",
+	FieldNextHop:   "NextHop",
 	FieldSrcAs:     "SrcAsn",
 	FieldDstAs:     "DstAsn",
-	FieldNextHopAs: "NH_AS",
-	FieldSrcPfx:    "SrcNet",
-	FieldDstPfx:    "DstNet",
+	FieldNextHopAs: "NextHopAsn",
+	FieldSrcPfx:    "SrcPfx",
+	FieldDstPfx:    "DstPfx",
 	FieldSrcPort:   "SrcPort",
 	FieldDstPort:   "DstPort",
 }
 
-// reverse mapping for breakdownLabels
-func breakdownIndex(key string) int {
-	for i, k := range breakdownLabels {
-		if k == key {
-			return i
+// GetBreakdownLabels returns a sorted list of known breakdown labels
+func GetBreakdownLabels() []string {
+	return []string{
+		breakdownLabels[FieldFamily],
+		breakdownLabels[FieldSrcAddr],
+		breakdownLabels[FieldDstAddr],
+		breakdownLabels[FieldProtocol],
+		breakdownLabels[FieldIntIn],
+		breakdownLabels[FieldIntOut],
+		breakdownLabels[FieldNextHop],
+		breakdownLabels[FieldSrcAs],
+		breakdownLabels[FieldDstAs],
+		breakdownLabels[FieldNextHopAs],
+		breakdownLabels[FieldSrcPfx],
+		breakdownLabels[FieldDstPfx],
+		breakdownLabels[FieldSrcPort],
+		breakdownLabels[FieldDstPort],
+	}
+}
+
+// Each calls the given function for each attribute that has a value
+func (bk *BreakdownKey) Each(cb func(string, string)) {
+	for i, value := range bk {
+		if value != "" {
+			cb(breakdownLabels[i], value)
 		}
 	}
-	return -1
-}
-
-// Set sets the value of a field
-func (bk *BreakdownKey) Set(key string, value string) {
-	bk[breakdownIndex(key)] = value
-}
-
-// Get returns the value of a field
-func (bk *BreakdownKey) Get(key string) string {
-	return bk[breakdownIndex(key)]
 }
 
 // String builds a textual representation of the key
@@ -94,35 +104,35 @@ func (bk *BreakdownKey) String() string {
 func (bf *BreakdownFlags) Set(keys []string) error {
 	for _, key := range keys {
 		switch key {
-		case "Router":
+		case breakdownLabels[FieldRouter]:
 			bf.Router = true
-		case "Family":
+		case breakdownLabels[FieldFamily]:
 			bf.Family = true
-		case "SrcAddr":
+		case breakdownLabels[FieldSrcAddr]:
 			bf.SrcAddr = true
-		case "DstAddr":
+		case breakdownLabels[FieldDstAddr]:
 			bf.DstAddr = true
-		case "Protocol":
+		case breakdownLabels[FieldProtocol]:
 			bf.Protocol = true
-		case "IntIn":
+		case breakdownLabels[FieldIntIn]:
 			bf.IntIn = true
-		case "IntOut":
+		case breakdownLabels[FieldIntOut]:
 			bf.IntOut = true
-		case "NextHop":
+		case breakdownLabels[FieldNextHop]:
 			bf.NextHop = true
-		case "SrcAsn":
+		case breakdownLabels[FieldSrcAs]:
 			bf.SrcAsn = true
-		case "DstAsn":
+		case breakdownLabels[FieldDstAs]:
 			bf.DstAsn = true
-		case "NextHopAsn":
+		case breakdownLabels[FieldNextHopAs]:
 			bf.NextHopAsn = true
-		case "SrcPfx":
+		case breakdownLabels[FieldSrcPfx]:
 			bf.SrcPfx = true
-		case "DstPfx":
+		case breakdownLabels[FieldDstPfx]:
 			bf.DstPfx = true
-		case "SrcPort":
+		case breakdownLabels[FieldSrcPort]:
 			bf.SrcPort = true
-		case "DstPort":
+		case breakdownLabels[FieldDstPort]:
 			bf.DstPort = true
 		default:
 			return fmt.Errorf("invalid breakdown key: %s", key)
@@ -146,6 +156,9 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 
 	key := BreakdownKey{}
 
+	if bd.Family {
+		key[FieldFamily] = fmt.Sprintf("%d", fl.Family)
+	}
 	if bd.SrcAddr {
 		key[FieldSrcAddr] = net.IP(fl.SrcAddr).String()
 	}

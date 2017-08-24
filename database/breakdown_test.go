@@ -15,15 +15,15 @@ func TestBreakdownKeyString(t *testing.T) {
 	assert.Equal("", key.String())
 
 	// Set one key
-	key.Set("DstPort", "23")
-	assert.Equal(key.Get("DstPort"), "23")
+	key.set("DstPort", "23")
+	assert.Equal(key.get("DstPort"), "23")
 	assert.Equal("DstPort:23", key.String())
 
 	// Set all keys
 	for i := range breakdownLabels {
 		key[i] = strconv.Itoa(i)
 	}
-	assert.Equal("Src:2,Dst:3,Proto:4,IntIn:5,IntOut:6,NH:7,SrcAsn:8,DstAsn:9,NH_AS:10,SrcNet:11,DstNet:12,SrcPort:13,DstPort:14", key.String())
+	assert.Equal("Family:2,SrcAddr:3,DstAddr:4,Protocol:5,IntIn:6,IntOut:7,NextHop:8,SrcAsn:9,DstAsn:10,NextHopAsn:11,SrcPfx:12,DstPfx:13,SrcPort:14,DstPort:15", key.String())
 }
 
 func TestBreakdownFlags(t *testing.T) {
@@ -34,9 +34,37 @@ func TestBreakdownFlags(t *testing.T) {
 	assert.False(key.DstAddr)
 
 	// Enable all
-	assert.NoError(key.Set([]string{"Router", "Family", "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn", "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort"}))
+	assert.NoError(key.Set([]string{"Family", "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn", "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort"}))
 	assert.True(key.DstAddr)
 
 	// Invalid key
 	assert.EqualError(key.Set([]string{"foobar"}), "invalid breakdown key: foobar")
+}
+
+func TestGetBreakdownLabels(t *testing.T) {
+	assert := assert.New(t)
+
+	labels := GetBreakdownLabels()
+	assert.NotNil(labels)
+	assert.Contains(labels, "SrcAddr")
+}
+
+// reverse mapping for breakdownLabels
+func breakdownIndex(key string) int {
+	for i, k := range breakdownLabels {
+		if k == key {
+			return i
+		}
+	}
+	panic("invalid breakdown label: " + key)
+}
+
+// set Sets the value of a field
+func (bk *BreakdownKey) set(key string, value string) {
+	bk[breakdownIndex(key)] = value
+}
+
+// get returns the value of a field
+func (bk *BreakdownKey) get(key string) string {
+	return bk[breakdownIndex(key)]
 }

@@ -34,24 +34,47 @@ const (
 	OpUnequal = 1
 	OpSmaller = 2
 	OpGreater = 3
-
-	FieldTimestamp = 0
-	FieldRouter    = 1
-	FieldSrcAddr   = 2
-	FieldDstAddr   = 3
-	FieldProtocol  = 4
-	FieldIntIn     = 5
-	FieldIntOut    = 6
-	FieldNextHop   = 7
-	FieldSrcAs     = 8
-	FieldDstAs     = 9
-	FieldNextHopAs = 10
-	FieldSrcPfx    = 11
-	FieldDstPfx    = 12
-	FieldSrcPort   = 13
-	FieldDstPort   = 14
-	FieldMax       = 15
 )
+
+// These constants are only used internally
+const (
+	FieldTimestamp = iota
+	FieldRouter
+	FieldFamily
+	FieldSrcAddr
+	FieldDstAddr
+	FieldProtocol
+	FieldIntIn
+	FieldIntOut
+	FieldNextHop
+	FieldSrcAs
+	FieldDstAs
+	FieldNextHopAs
+	FieldSrcPfx
+	FieldDstPfx
+	FieldSrcPort
+	FieldDstPort
+	FieldMax
+)
+
+var fieldNames = map[string]int{
+	"Timestamp": FieldTimestamp,
+	"Router":    FieldRouter,
+	"Family":    FieldFamily,
+	"SrcAddr":   FieldSrcAddr,
+	"DstAddr":   FieldDstAddr,
+	"Protocol":  FieldProtocol,
+	"IntIn":     FieldIntIn,
+	"IntOut":    FieldIntOut,
+	"NextHop":   FieldNextHop,
+	"SrcAs":     FieldSrcAs,
+	"DstAs":     FieldDstAs,
+	"NextHopAs": FieldNextHopAs,
+	"SrcPfx":    FieldSrcPfx,
+	"DstPfx":    FieldDstPfx,
+	"SrcPort":   FieldSrcPort,
+	"DstPort":   FieldDstPort,
+}
 
 type void struct{}
 
@@ -75,6 +98,14 @@ type Query struct {
 type concurrentResSum struct {
 	Values BreakdownMap
 	Lock   sync.Mutex
+}
+
+// GetFieldByName returns the internal number of a field
+func GetFieldByName(name string) int {
+	if i, found := fieldNames[name]; found {
+		return i
+	}
+	return -1
 }
 
 // loadFromDisc loads netflow data from disk into in memory data structure
@@ -139,6 +170,11 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 		case FieldTimestamp:
 			continue
 		case FieldRouter:
+			continue
+		case FieldFamily:
+			if fl.Family != uint32(convert.Uint16b(c.Operand)) {
+				return false
+			}
 			continue
 		case FieldProtocol:
 			if fl.Protocol != uint32(convert.Uint16b(c.Operand)) {

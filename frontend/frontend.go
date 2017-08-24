@@ -151,13 +151,18 @@ func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	q, err := translateQuery(&qe)
 	if err != nil {
-		http.Error(w, "Unable to translate query", 422)
+		http.Error(w, "Unable to translate query: "+err.Error(), 422)
 		return
 	}
 
 	result, err := fe.flowDB.RunQuery(q)
 	if err != nil {
-		http.Error(w, "Query failed", 500)
+		http.Error(w, "Query failed: "+err.Error(), 500)
+		return
+	}
+
+	if len(result.Data) == 0 {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
