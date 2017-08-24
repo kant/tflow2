@@ -143,19 +143,16 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	var qe QueryExt
-	err := json.Unmarshal([]byte(r.URL.Query().Get("q")), &qe)
-	if err != nil {
-		http.Error(w, err.Error(), 422)
-		return
-	}
-	q, err := translateQuery(&qe)
-	if err != nil {
-		http.Error(w, "Unable to translate query: "+err.Error(), 422)
+	q, errors := translateQuery(r.URL.Query())
+	if errors != nil {
+		http.Error(w, "Unable to parse query:", 422)
+		for _, err := range errors {
+			fmt.Fprintln(w, err.Error())
+		}
 		return
 	}
 
-	result, err := fe.flowDB.RunQuery(q)
+	result, err := fe.flowDB.RunQuery(&q)
 	if err != nil {
 		http.Error(w, "Query failed: "+err.Error(), 500)
 		return
