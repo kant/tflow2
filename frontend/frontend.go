@@ -157,7 +157,7 @@ func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 
 	result, err := fe.flowDB.RunQuery(q)
 	if err != nil {
-		http.Error(w, "Query failed: "+err.Error(), 500)
+		http.Error(w, fmt.Sprintf("Query failed: %v", err), 500)
 		return
 	}
 
