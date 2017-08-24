@@ -328,14 +328,14 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 
 	start, end, err := fdb.getStartEndTimes(q)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to Start/End times: %v", err)
 	}
 
 	glog.Infof("RunQuery: start=%d end=%d current=%d", start, end, fdb.CurrentTimeslot())
 
 	rtr, err := fdb.getRouter(q)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to get router: %v", err)
 	}
 
 	resSum := &concurrentResSum{}
