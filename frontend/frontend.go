@@ -143,7 +143,7 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	q, errors := translateQuery(r.URL.Query())
+	query, errors := translateQuery(r.URL.Query())
 	if errors != nil {
 		http.Error(w, "Unable to parse query:", 422)
 		for _, err := range errors {
@@ -152,7 +152,7 @@ func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := fe.flowDB.RunQuery(&q)
+	result, err := fe.flowDB.RunQuery(&query)
 	if err != nil {
 		http.Error(w, "Query failed: "+err.Error(), 500)
 		return

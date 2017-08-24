@@ -108,6 +108,16 @@ func GetFieldByName(name string) int {
 	return -1
 }
 
+// Includes checks if the given field and operator is included in the list
+func (conditions Conditions) Includes(field int, operator int) bool {
+	for _, cond := range conditions {
+		if cond.Field == field && cond.Operator == operator {
+			return true
+		}
+	}
+	return false
+}
+
 // loadFromDisc loads netflow data from disk into in memory data structure
 func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, resSum *concurrentResSum) (BreakdownMap, error) {
 	res := avltree.New()

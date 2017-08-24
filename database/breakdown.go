@@ -141,6 +141,57 @@ func (bf *BreakdownFlags) Set(keys []string) error {
 	return nil
 }
 
+// Count returns the number of enabled breakdown flags
+func (bf *BreakdownFlags) Count() (count int) {
+	if bf.Router {
+		count++
+	}
+	if bf.Family {
+		count++
+	}
+	if bf.SrcAddr {
+		count++
+	}
+	if bf.DstAddr {
+		count++
+	}
+	if bf.Protocol {
+		count++
+	}
+	if bf.IntIn {
+		count++
+	}
+	if bf.IntOut {
+		count++
+	}
+	if bf.NextHop {
+		count++
+	}
+	if bf.SrcAsn {
+		count++
+	}
+	if bf.DstAsn {
+		count++
+	}
+	if bf.NextHopAsn {
+		count++
+	}
+	if bf.SrcPfx {
+		count++
+	}
+	if bf.DstPfx {
+		count++
+	}
+	if bf.SrcPort {
+		count++
+	}
+	if bf.DstPort {
+		count++
+	}
+
+	return
+}
+
 // breakdown build all possible relevant keys of flows for flows in tree `node`
 // and builds sums for each key in order to allow us to find top combinations
 func breakdown(node *avltree.TreeNode, vals ...interface{}) {

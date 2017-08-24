@@ -36,6 +36,7 @@ func TestBreakdownFlags(t *testing.T) {
 	// Enable all
 	assert.NoError(key.Set([]string{"Family", "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn", "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort"}))
 	assert.True(key.DstAddr)
+	assert.Equal(14, key.Count())
 
 	// Invalid key
 	assert.EqualError(key.Set([]string{"foobar"}), "invalid breakdown key: foobar")
