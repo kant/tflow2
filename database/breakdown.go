@@ -71,29 +71,17 @@ func GetBreakdownLabels() []string {
 	}
 }
 
-// Each calls the given function for each attribute that has a value
-func (bk *BreakdownKey) Each(cb func(string, string)) {
-	for i, value := range bk {
-		if value != "" {
-			cb(breakdownLabels[i], value)
-		}
-	}
-}
-
-// String builds a textual representation of the key
-func (bk *BreakdownKey) String() string {
+// Join formats the keys and joins them with commas
+func (bk *BreakdownKey) Join(format string) string {
 	var buffer bytes.Buffer
-
-	for i, val := range bk {
-		if val == "" {
+	for i, value := range bk {
+		if value == "" {
 			continue
 		}
-		if label, ok := breakdownLabels[i]; ok {
-			if buffer.Len() > 0 {
-				buffer.WriteRune(',')
-			}
-			buffer.WriteString(label + ":" + val)
+		if buffer.Len() > 0 {
+			buffer.WriteRune(',')
 		}
+		buffer.WriteString(fmt.Sprintf(format, breakdownLabels[i], value))
 	}
 
 	return buffer.String()

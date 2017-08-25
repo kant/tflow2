@@ -1,7 +1,6 @@
 package frontend
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 
@@ -66,14 +65,5 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 // formats a breakdown key for prometheus
 // see tests for examples
 func formatBreakdownKey(key *database.BreakdownKey) string {
-	result := bytes.Buffer{}
-
-	key.Each(func(key, value string) {
-		if result.Len() > 0 {
-			result.WriteRune(',')
-		}
-		result.WriteString(fmt.Sprintf(`%s="%s"`, key, value))
-	})
-
-	return result.String()
+	return key.Join(`%s="%s"`)
 }
