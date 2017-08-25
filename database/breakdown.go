@@ -18,7 +18,6 @@ type BreakdownMap map[BreakdownKey]uint64
 
 // BreakdownFlags defines by what fields data should be broken down in a query
 type BreakdownFlags struct {
-	Router     bool
 	Family     bool
 	SrcAddr    bool
 	DstAddr    bool
@@ -104,8 +103,6 @@ func (bk *BreakdownKey) String() string {
 func (bf *BreakdownFlags) Set(keys []string) error {
 	for _, key := range keys {
 		switch key {
-		case breakdownLabels[FieldRouter]:
-			bf.Router = true
 		case breakdownLabels[FieldFamily]:
 			bf.Family = true
 		case breakdownLabels[FieldSrcAddr]:
@@ -143,9 +140,7 @@ func (bf *BreakdownFlags) Set(keys []string) error {
 
 // Count returns the number of enabled breakdown flags
 func (bf *BreakdownFlags) Count() (count int) {
-	if bf.Router {
-		count++
-	}
+
 	if bf.Family {
 		count++
 	}
