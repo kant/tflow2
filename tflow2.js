@@ -200,7 +200,7 @@ $(document).ready(function() {
         populateForm();
     })
 
-    $("#submit").on('click', submitQuery);
+    $("form").on('submit', submitQuery);
 
     google.charts.load('current', {
         'packages': ['corechart']

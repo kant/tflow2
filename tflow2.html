@@ -25,14 +25,7 @@
         <header role="banner">
             <h1>tflow Netflow Analyzer</h1>
         </header>
-        <form action="/" method="GET" novalidate id="form">
-            <input type="hidden" id="query" name="query">
-            <script type="text/javascript">
-                query = VAR_QUERY;
-                $("#query").val(JSON.stringify(query));
-            </script>
-        </form>
-        <div id="fs_container">
+        <form>
             <fieldset>
                 <legend>Netflow Query</legend>
                 <fieldset>
@@ -47,7 +40,7 @@
                     </div>
                     <div class="in">
                         <label for="Router">Router</label>
-                        <input type="text" id="Router">
+                        <input type="text" id="Router" required>
                     </div>
                     <div class="in">
                         <label for="IntIn">Interface In</label>
@@ -163,7 +156,7 @@
                 </div>
             </fieldset>
             <input type="submit" value="Run Query" id="submit">
-        </div>
+        </form>
         <div id="chart_div"></div>
     </body>
 </html>
