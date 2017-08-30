@@ -28,7 +28,7 @@ func (res *Result) WriteCSV(writer io.Writer) {
 
 	for k := range res.TopKeys {
 		topKeys = append(topKeys, k)
-		headLine = append(headLine, k.String())
+		headLine = append(headLine, k.Join("%s:%s"))
 	}
 	headLine = append(headLine, "Rest")
 	w.Write(headLine)

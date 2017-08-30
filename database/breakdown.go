@@ -18,7 +18,6 @@ type BreakdownMap map[BreakdownKey]uint64
 
 // BreakdownFlags defines by what fields data should be broken down in a query
 type BreakdownFlags struct {
-	Router     bool
 	Family     bool
 	SrcAddr    bool
 	DstAddr    bool
@@ -72,29 +71,17 @@ func GetBreakdownLabels() []string {
 	}
 }
 
-// Each calls the given function for each attribute that has a value
-func (bk *BreakdownKey) Each(cb func(string, string)) {
-	for i, value := range bk {
-		if value != "" {
-			cb(breakdownLabels[i], value)
-		}
-	}
-}
-
-// String builds a textual representation of the key
-func (bk *BreakdownKey) String() string {
+// Join formats the keys and joins them with commas
+func (bk *BreakdownKey) Join(format string) string {
 	var buffer bytes.Buffer
-
-	for i, val := range bk {
-		if val == "" {
+	for i, value := range bk {
+		if value == "" {
 			continue
 		}
-		if label, ok := breakdownLabels[i]; ok {
-			if buffer.Len() > 0 {
-				buffer.WriteRune(',')
-			}
-			buffer.WriteString(label + ":" + val)
+		if buffer.Len() > 0 {
+			buffer.WriteRune(',')
 		}
+		buffer.WriteString(fmt.Sprintf(format, breakdownLabels[i], value))
 	}
 
 	return buffer.String()
@@ -104,8 +91,6 @@ func (bk *BreakdownKey) String() string {
 func (bf *BreakdownFlags) Set(keys []string) error {
 	for _, key := range keys {
 		switch key {
-		case breakdownLabels[FieldRouter]:
-			bf.Router = true
 		case breakdownLabels[FieldFamily]:
 			bf.Family = true
 		case breakdownLabels[FieldSrcAddr]:
@@ -139,6 +124,55 @@ func (bf *BreakdownFlags) Set(keys []string) error {
 		}
 	}
 	return nil
+}
+
+// Count returns the number of enabled breakdown flags
+func (bf *BreakdownFlags) Count() (count int) {
+
+	if bf.Family {
+		count++
+	}
+	if bf.SrcAddr {
+		count++
+	}
+	if bf.DstAddr {
+		count++
+	}
+	if bf.Protocol {
+		count++
+	}
+	if bf.IntIn {
+		count++
+	}
+	if bf.IntOut {
+		count++
+	}
+	if bf.NextHop {
+		count++
+	}
+	if bf.SrcAsn {
+		count++
+	}
+	if bf.DstAsn {
+		count++
+	}
+	if bf.NextHopAsn {
+		count++
+	}
+	if bf.SrcPfx {
+		count++
+	}
+	if bf.DstPfx {
+		count++
+	}
+	if bf.SrcPort {
+		count++
+	}
+	if bf.DstPort {
+		count++
+	}
+
+	return
 }
 
 // breakdown build all possible relevant keys of flows for flows in tree `node`

@@ -15,113 +15,119 @@ var availableProtocols = [];
 var rtrs;
 var routers = [];
 var interfaces = [];
-const OpEqual = 0;
-const OpUnequal = 1;
-const OpSmaller = 2;
-const OpGreater = 3;
-
-var bdfields = [
-        "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn",
-        "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort" ];
-
-var fields = ["Router"].concat(bdfields)
 
 function drawChart() {
-    var query = $("#query").val();
-    if (query == "" || query == "{}") {
+    var query = location.href.split("#")[1]
+    if (!query) {
         return;
     }
 
-    var url = "/query?q=" + encodeURI(query)
-
     $.ajax({
         type: "GET",
-        url: url,
+        url: "/query?" + query,
         dataType: "text",
         success: function(rdata, status, xhr) {
             if (rdata == undefined) {
                 $("#chart_div").text("No data found")
                 return
             }
-            rdata = rdata.trim()
-            pres = Papa.parse(rdata)
-
-            var data = [];
-            for (var i = 0; i < pres.data.length; i++) {
-                for (var j = 0; j < pres.data[i].length; j++) {
-                    if (j == 0) {
-                        data[i] = [];
-                    }
-                    x = pres.data[i][j];
-                    if (i != 0) {
-                        if (j != 0) {
-                            x = parseInt(x)
-                        }
-                    }
-                    data[i][j] = x;
-                }
-            }
-
-            data = google.visualization.arrayToDataTable(data);
-
-            var options = {
-                isStacked: true,
-                title: 'NetFlow bps of top flows',
-                hAxis: {
-                    title: 'Time',
-                    titleTextStyle: {
-                        color: '#333'
-                    }
-                },
-                vAxis: {
-                    minValue: 0
-                }
-            };
-
-            var chart = new google.visualization.AreaChart(document.getElementById('chart_div'));
-            chart.draw(data, options);
+            renderChart(rdata)
         },
-        error: function(xhr){
+        error: function(xhr) {
             $("#chart_div").text(xhr.responseText)
         }
-    });
+    })
+}
+
+function renderChart(rdata) {
+    pres = Papa.parse(rdata.trim())
+
+    var data = [];
+    for (var i = 0; i < pres.data.length; i++) {
+        for (var j = 0; j < pres.data[i].length; j++) {
+            if (j == 0) {
+                data[i] = [];
+            }
+            x = pres.data[i][j];
+            if (i != 0) {
+                if (j != 0) {
+                    x = parseInt(x)
+                }
+            }
+            data[i][j] = x;
+        }
+    }
+
+    data = google.visualization.arrayToDataTable(data);
+
+    var options = {
+        isStacked: true,
+        title: 'NetFlow bps of top flows',
+        hAxis: {
+            title: 'Time',
+            titleTextStyle: {
+                color: '#333'
+            }
+        },
+        vAxis: {
+            minValue: 0
+        }
+    };
+
+    new google.visualization.AreaChart(document.getElementById('chart_div')).draw(data, options);
+}
+
+// source: https://stackoverflow.com/a/26849194
+function parseParams(str) {
+    return str.split('&').reduce(function (params, param) {
+        var paramSplit = param.split('=').map(function (value) {
+            return decodeURIComponent(value.replace('+', ' '));
+        });
+        params[paramSplit[0]] = paramSplit[1];
+        return params;
+    }, {});
 }
 
 function populateForm() {
-    var q = $("#query").val();
-    if (q == "" || q == "{}") {
+    var query = location.href.split("#")[1]
+    if (!query) {
         return;
     }
 
-    q = JSON.parse(q);
-    $("#topn").val(q.TopN);
-    for (var c in q.Cond) {
-        var fieldName = q.Cond[c]['Field'];
-        var operand = q.Cond[c]['Operand'];
-        if (fieldName == "Router") {
-            operand = getRouterById(operand);
-            if (operand == null) {
-                return;
+    var params = parseParams(query);
+    
+    for (var key in params) {
+        var value = params[key]
+        
+        if (key.match(/^Timestamp/)){
+            timezoneOffset = (new Date()).getTimezoneOffset()*60
+            value = formatTimestamp(new Date((parseInt(value) - timezoneOffset )*1000))
+        } else if (key == "Router") {
+            value = getRouterById(value);
+            if (value == null) {
+                continue;
             }
-        } else if (fieldName == "IntIn" || fieldName == "IntOut") {
-            operand = getInterfaceById($("#Router").val(), operand);
-            if (operand == null) {
-                return;
+        } else if (key == "IntIn" || key == "IntOut") {
+            value = getInterfaceById($("#Router").val(), value);
+            if (value == null) {
+                continue;
             }
-        } else if (fieldName == "Protocol") {
-            operand = protocols[operand];
-            if (operand == null) {
-                return;
+        } else if (key == "Protocol") {
+            value = protocols[value];
+            if (value == null) {
+                continue;
+            }
+        } else if (key == "Breakdown") {
+            var breakdown = value.split(",")
+            for (var i in breakdown) {
+                $("#bd"+breakdown[i]).attr("checked", true)
+                continue
             }
         }
 
-        $("#" + fieldName).val(operand);
+        $("#" + key.replace(".","_")).val(value);
     }
     loadInterfaceOptions();
-
-    for (var f in q.Breakdown) {
-        $("#bd" + q.Breakdown[f]).prop( "checked", true );
-    }
 }
 
 function loadInterfaceOptions() {
@@ -172,15 +178,19 @@ function loadRouters() {
     });
 }
 
+function formatTimestamp(date) {
+    return date.toISOString().substr(0, 16)
+}
+
 $(document).ready(function() {
-    var start = new Date(((new Date() / 1000) - 900)* 1000).toISOString().substr(0, 16)
-    if ($("#TimeStart").val() == "") {
-        $("#TimeStart").val(start);
+    var start = formatTimestamp(new Date(((new Date() / 1000) - 900)* 1000))
+    if ($("#Timestamp_gt").val() == "") {
+        $("#Timestamp_gt").val(start);
     }
 
-    var end = new Date().toISOString().substr(0, 16)
-    if ($("#TimeEnd").val() == "") {
-        $("#TimeEnd").val(end);
+    var end = formatTimestamp(new Date())
+    if ($("#Timestamp_lt").val() == "") {
+        $("#Timestamp_lt").val(end);
     }
 
     $.when(loadRouters(), loadProtocols()).done(function() {
@@ -190,11 +200,17 @@ $(document).ready(function() {
         populateForm();
     })
 
-    $("#submit").on('click', submitQuery);
+    $("form").on('submit', submitQuery);
 
     google.charts.load('current', {
         'packages': ['corechart']
     });
+    
+    window.onhashchange = function () {
+        populateForm()
+        google.charts.setOnLoadCallback(drawChart);
+    }
+
     google.charts.setOnLoadCallback(drawChart);
 });
 
@@ -233,60 +249,42 @@ function getInterfaceById(router, id) {
 }
 
 function submitQuery() {
-    var query = {
-        Cond: [],
-        Breakdown: [],
-        TopN: parseInt($("#topn").val())
-    };
+    var breakdown = []
+    var query = {};
 
-    var start = new Date($("#TimeStart").val());
-    var end = new Date($("#TimeEnd").val());
-    start = Math.round(start.getTime() / 1000);
-    end = Math.round(end.getTime() / 1000);
-    query.Cond.push({
-        Field: "Timestamp",
-        Operator: OpGreater,
-        Operand: start + ""
-    });
-    query.Cond.push({
-        Field: "Timestamp",
-        Operator: OpSmaller,
-        Operand: end + ""
-    });
+    $(".in input").each(function(){
+        var field = this.id.replace("_",".")
+        var value = this.value
 
-    for (var k in fields) {
-        field = fields[k]
-
-        tmp = $("#" + field).val();
-        if (tmp == "") {
-            continue;
+        if (value == "") {
+            return;
         }
-        if (field == "Router") {
-            tmp = rtrs[tmp]['id'];
+        
+        if (this.id.match(/^Timestamp/)){
+            value = Math.round(new Date(value).getTime() / 1000)
+        } else if (field == "Router") {
+            value = rtrs[value]['id'];
         } else if (field == "IntIn" || field == "IntOut") {
-            tmp = getIntId($("#Router").val(), tmp)
-            if (tmp == null) {
+            value = getIntId($("#Router").val(), value)
+            if (value == null) {
                 return;
             }
         } else if (field == "Protocol") {
-            tmp = getProtocolId(tmp);
-            if (tmp == null) {
+            value = getProtocolId(value);
+            if (value == null) {
                 return;
             }
         }
-        query.Cond.push({
-            Field: field,
-            Operator: OpEqual,
-            Operand: tmp + ""
-        });
+        query[field] = value + ""
+    })
+
+    $(".bd input:checked").each(function(){
+        breakdown.push(this.id.replace(/^bd/,""));
+    })
+    if (breakdown.length) {
+        query.Breakdown = breakdown.join(",")
     }
 
-    for (var i in bdfields) {
-        if ($("#bd" + bdfields[i]).prop('checked')) {
-            query.Breakdown.push(bdfields[i]);
-        }
-    }
-
-    $("#query").val(JSON.stringify(query));
-    $("#form").submit();
+    location.href = "#" + jQuery.param(query)
+    return false
 }

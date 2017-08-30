@@ -12,18 +12,18 @@ func TestBreakdownKeyString(t *testing.T) {
 
 	// Empty Key
 	key := BreakdownKey{}
-	assert.Equal("", key.String())
+	assert.Equal("", key.Join("%s:%s"))
 
 	// Set one key
 	key.set("DstPort", "23")
 	assert.Equal(key.get("DstPort"), "23")
-	assert.Equal("DstPort:23", key.String())
+	assert.Equal("DstPort:23", key.Join("%s:%s"))
 
 	// Set all keys
 	for i := range breakdownLabels {
 		key[i] = strconv.Itoa(i)
 	}
-	assert.Equal("Family:2,SrcAddr:3,DstAddr:4,Protocol:5,IntIn:6,IntOut:7,NextHop:8,SrcAsn:9,DstAsn:10,NextHopAsn:11,SrcPfx:12,DstPfx:13,SrcPort:14,DstPort:15", key.String())
+	assert.Equal("Family:2,SrcAddr:3,DstAddr:4,Protocol:5,IntIn:6,IntOut:7,NextHop:8,SrcAsn:9,DstAsn:10,NextHopAsn:11,SrcPfx:12,DstPfx:13,SrcPort:14,DstPort:15", key.Join("%s:%s"))
 }
 
 func TestBreakdownFlags(t *testing.T) {
@@ -36,6 +36,7 @@ func TestBreakdownFlags(t *testing.T) {
 	// Enable all
 	assert.NoError(key.Set([]string{"Family", "SrcAddr", "DstAddr", "Protocol", "IntIn", "IntOut", "NextHop", "SrcAsn", "DstAsn", "NextHopAsn", "SrcPfx", "DstPfx", "SrcPort", "DstPort"}))
 	assert.True(key.DstAddr)
+	assert.Equal(14, key.Count())
 
 	// Invalid key
 	assert.EqualError(key.Set([]string{"foobar"}), "invalid breakdown key: foobar")
