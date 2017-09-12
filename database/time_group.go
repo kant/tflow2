@@ -72,7 +72,7 @@ func (tg *TimeGroup) filterAndBreakdown(resSum *concurrentResSum, q *Query) Brea
 	// Find common elements of candidate trees
 	res := avltree.Intersection(candidates)
 	if res == nil {
-		glog.Warningf("Interseciton Result was empty!")
+		glog.Warningf("Intersection result was empty!")
 		res = tg.Any.Get(anyIndex)
 	}
 
