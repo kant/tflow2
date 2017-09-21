@@ -1,0 +1,7 @@
+builds:
+  - binary: tflow2
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
