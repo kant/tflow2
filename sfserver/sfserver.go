@@ -13,7 +13,6 @@
 package sfserver
 
 import (
-	"DEV/src/tflow2/convert"
 	"fmt"
 	"io"
 	"net"
@@ -27,6 +26,7 @@ import (
 	"github.com/taktv6/tflow2/packet"
 	"github.com/taktv6/tflow2/sflow"
 	"github.com/taktv6/tflow2/stats"
+	"github.com/taktv6/tflow2/convert"
 )
 
 // SflowServer represents a sflow Collector instance

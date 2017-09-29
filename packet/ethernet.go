@@ -1,10 +1,11 @@
 package packet
 
 import (
-	"DEV/src/tflow2/convert"
 	"fmt"
 	"net"
 	"unsafe"
+
+	"github.com/taktv6/tflow2/convert"
 )
 
 const (

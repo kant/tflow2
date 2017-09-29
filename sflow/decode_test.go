@@ -1,11 +1,12 @@
 package sflow
 
 import (
-	"DEV/src/tflow2/convert"
 	"fmt"
 	"net"
 	"testing"
 	"unsafe"
+
+	"github.com/taktv6/tflow2/convert"
 )
 
 func TestDecode(t *testing.T) {

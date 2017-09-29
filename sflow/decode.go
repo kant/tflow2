@@ -1,12 +1,12 @@
 package sflow
 
 import (
-	"DEV/src/tflow2/convert"
 	"fmt"
 	"net"
 	"unsafe"
 
 	"github.com/golang/glog"
+	"github.com/taktv6/tflow2/convert"
 )
 
 const (
