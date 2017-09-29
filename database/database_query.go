@@ -131,7 +131,7 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, resS
 		return nil, err
 	}
 	if fdb.debug > 1 {
-		glog.Infof("sucessfully opened file: %s", filename)
+		glog.Infof("successfully opened file: %s", filename)
 	}
 	defer fh.Close()
 
@@ -288,7 +288,7 @@ func (fdb *FlowDatabase) getStartEndTimes(q *Query) (start int64, end int64, err
 		}
 	}
 
-	// Allign start point to `aggregation` raster
+	// Align start point to `aggregation` raster
 	start = start - (start % fdb.aggregation)
 
 	return
