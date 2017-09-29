@@ -47,7 +47,7 @@ type FlowDatabase struct {
 	Input       chan *netflow.Flow
 }
 
-const anyIndex = 0
+const anyIndex = uint8(0)
 
 // New creates a new FlowDatabase and returns a pointer to it
 func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debug int, compLevel int, storage string, anonymize bool) *FlowDatabase {

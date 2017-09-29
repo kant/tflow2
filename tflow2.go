@@ -23,12 +23,14 @@ import (
 	"github.com/taktv6/tflow2/ifserver"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/nfserver"
+	"github.com/taktv6/tflow2/sfserver"
 	"github.com/taktv6/tflow2/stats"
 )
 
 var (
 	nfAddr        = flag.String("netflow", ":2055", "Address to use to receive netflow packets")
 	ipfixAddr     = flag.String("ipfix", ":4739", "Address to use to receive ipfix packets")
+	sfAddr        = flag.String("sflow", ":6343", "Address to use to receive sflow packets")
 	aggregation   = flag.Int64("aggregation", 60, "Time to groups flows together into one data point")
 	maxAge        = flag.Int64("maxage", 1800, "Maximum age of saved flows")
 	web           = flag.String("web", ":4444", "Address to use for web service")
@@ -56,9 +58,12 @@ func main() {
 
 	ifs := ifserver.New(*ipfixAddr, *sockReaders, *bgpAugment, *debugLevel)
 
+	sfs := sfserver.New(*sfAddr, *sockReaders, *bgpAugment, *debugLevel)
+
 	chans := make([]chan *netflow.Flow, 0)
 	chans = append(chans, nfs.Output)
 	chans = append(chans, ifs.Output)
+	chans = append(chans, sfs.Output)
 
 	flowDB := database.New(*aggregation, *maxAge, *dbAddWorkers, *samplerate, *debugLevel, *compLevel, *dataDir, *anonymize)
 

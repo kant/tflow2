@@ -33,6 +33,8 @@ type Stats struct {
 	Netflow9bytes   uint64
 	IPFIXpackets    uint64
 	IPFIXbytes      uint64
+	SflowPackets    uint64
+	SflowBytes      uint64
 }
 
 // GlobalStats is instance of `Stats` to keep stats of this program
@@ -58,4 +60,6 @@ func Varz(w http.ResponseWriter) {
 	fmt.Fprintf(w, "netflow_collector_netflow9_bytes %d\n", atomic.LoadUint64(&GlobalStats.Netflow9bytes))
 	fmt.Fprintf(w, "netflow_collector_ipfix_packets %d\n", atomic.LoadUint64(&GlobalStats.IPFIXpackets))
 	fmt.Fprintf(w, "netflow_collector_ipfix_bytes %d\n", atomic.LoadUint64(&GlobalStats.IPFIXbytes))
+	fmt.Fprintf(w, "netflow_collector_sflow_packets %d\n", atomic.LoadUint64(&GlobalStats.SflowPackets))
+	fmt.Fprintf(w, "netflow_collector_sflow_bytes %d\n", atomic.LoadUint64(&GlobalStats.SflowBytes))
 }
