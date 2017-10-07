@@ -22,7 +22,9 @@ import (
 	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/database"
 	"github.com/taktv6/tflow2/frontend"
+	"github.com/taktv6/tflow2/iana"
 	"github.com/taktv6/tflow2/ifserver"
+	"github.com/taktv6/tflow2/intfmapper"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/nfserver"
 	"github.com/taktv6/tflow2/sfserver"
@@ -52,6 +54,11 @@ func main() {
 	// Initialize statistics module
 	stats.Init()
 
+	inftMapper, err := intfmapper.New(cfg.Agents, *cfg.AggregationPeriod)
+	if err != nil {
+		glog.Exitf("Unable to initialize interface mappper: %v", err)
+	}
+
 	chans := make([]chan *netflow.Flow, 0)
 
 	// Netflow v9 Server
@@ -72,8 +79,23 @@ func main() {
 		chans = append(chans, sfs.Output)
 	}
 
+	// Get IANA instance
+	iana := iana.New()
+
 	// Start the database layer
-	flowDB := database.New(*cfg.AggregationPeriod, *cfg.CacheTime, *dbAddWorkers, *samplerate, *cfg.Debug, *cfg.CompressionLevel, *cfg.DataDir, *cfg.Anonymize)
+	flowDB := database.New(
+		*cfg.AggregationPeriod,
+		*cfg.CacheTime,
+		*dbAddWorkers,
+		*samplerate,
+		*cfg.Debug,
+		*cfg.CompressionLevel,
+		*cfg.DataDir,
+		*cfg.Anonymize,
+		inftMapper,
+		cfg.AgentsNameByIP,
+		iana,
+	)
 
 	// Start the annotator layer
 	annotator.New(
@@ -89,7 +111,14 @@ func main() {
 
 	// Frontend
 	if *cfg.Frontend.Enabled {
-		frontend.New(*cfg.Frontend.Listen, *protoNums, flowDB)
+		frontend.New(
+			*cfg.Frontend.Listen,
+			*protoNums,
+			flowDB,
+			cfg.Agents,
+			inftMapper,
+			iana,
+		)
 	}
 
 	var wg sync.WaitGroup

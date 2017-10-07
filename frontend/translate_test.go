@@ -55,8 +55,9 @@ func TestTranslateCondition(t *testing.T) {
 		},
 	}
 
+	fe := Frontend{}
 	for _, test := range tests {
-		cond, err := translateCondition(test.Key, test.Value)
+		cond, err := fe.translateCondition(test.Key, test.Value)
 		assert.NoError(err)
 		assert.NotNil(cond)
 		assert.Equal(test.ExpectedField, cond.Field)
@@ -67,15 +68,16 @@ func TestTranslateCondition(t *testing.T) {
 
 func TestTranslateQuery(t *testing.T) {
 	assert := assert.New(t)
+	fe := Frontend{}
 
-	query, errors := translateQuery(url.Values{"TopN": []string{"15"}})
+	query, errors := fe.translateQuery(url.Values{"TopN": []string{"15"}})
 	assert.Nil(errors)
 	assert.Equal(query.TopN, 15)
 
-	query, errors = translateQuery(url.Values{"Timestamp.lt": []string{"42"}, "Timestamp.gt": []string{"23"}})
+	query, errors = fe.translateQuery(url.Values{"Timestamp.lt": []string{"42"}, "Timestamp.gt": []string{"23"}})
 	assert.Nil(errors)
 	assert.Len(query.Cond, 2)
 
-	query, errors = translateQuery(url.Values{"Unknown": []string{"foo"}})
+	query, errors = fe.translateQuery(url.Values{"Unknown": []string{"foo"}})
 	assert.EqualError(errors[0], "unknown field: Unknown")
 }

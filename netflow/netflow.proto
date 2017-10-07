@@ -67,8 +67,20 @@ message Flow {
   uint32 dst_port = 18;
 }
 
+// Intf groups an interfaces ID and name
+message Intf {
+    // ID is an interface ID
+    uint32 id = 1;
+
+    // name is an interfaces name
+    string name = 2;
+}
+
 // Flows defines a groups of flows
 message Flows {
     // Group of flows
     repeated Flow flows = 1;
+    
+    // Mapping of interface names to IDs
+    repeated Intf interface_mapping = 2;
 }

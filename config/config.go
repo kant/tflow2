@@ -23,6 +23,8 @@ type Config struct {
 	Frontend        *Server     `yaml:"frontend"`
 	BGPAugmentation *BGPAugment `yaml:"bgp_augmentation"`
 	Agents          []Agent     `yaml:"agents"`
+
+	AgentsNameByIP map[string]string
 }
 
 // BGPAugment represents BGP augmentation configuration
@@ -89,30 +91,6 @@ var (
 	}
 )
 
-func bgpPtr(bgp BGPAugment) *BGPAugment {
-	return &bgp
-}
-
-func srvPtr(srv Server) *Server {
-	return &srv
-}
-
-func strPtr(str string) *string {
-	return &str
-}
-
-func boolPtr(v bool) *bool {
-	return &v
-}
-
-func intPtr(x int) *int {
-	return &x
-}
-
-func int64Ptr(x int64) *int64 {
-	return &x
-}
-
 // New reads a configuration file and returns a Config
 func New(filename string) (*Config, error) {
 	cfgFile, err := ioutil.ReadFile(filename)
@@ -127,6 +105,14 @@ func New(filename string) (*Config, error) {
 	}
 
 	cfg.defaults()
+
+	cfg.AgentsNameByIP = make(map[string]string)
+	for _, agent := range cfg.Agents {
+		if _, ok := cfg.AgentsNameByIP[*agent.IPAddress]; ok {
+			return nil, fmt.Errorf("Duplicate agent: %s", *agent.Name)
+		}
+		cfg.AgentsNameByIP[*agent.IPAddress] = *agent.Name
+	}
 
 	return cfg, nil
 }
@@ -203,4 +189,36 @@ func (cfg *Config) defaults() {
 	if cfg.BGPAugmentation.BIRD6Socket == nil {
 		cfg.BGPAugmentation.BIRD6Socket = dfltBIRD6Socket
 	}
+
+	if cfg.Agents != nil {
+		for key, agent := range cfg.Agents {
+			if agent.SNMPCommunity == nil {
+				cfg.Agents[key].SNMPCommunity = strPtr(*cfg.DefaultSNMPCommunity)
+			}
+		}
+	}
+}
+
+func bgpPtr(bgp BGPAugment) *BGPAugment {
+	return &bgp
+}
+
+func srvPtr(srv Server) *Server {
+	return &srv
+}
+
+func strPtr(str string) *string {
+	return &str
+}
+
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+func intPtr(x int) *int {
+	return &x
+}
+
+func int64Ptr(x int64) *int64 {
+	return &x
 }

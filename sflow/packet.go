@@ -19,16 +19,12 @@ import (
 // Packet is a decoded representation of a single sflow UDP packet.
 type Packet struct {
 	// A pointer to the packets headers
-	Header *Header
-
+	Header       *Header
 	headerTop    *headerTop
 	headerBottom *headerBottom
 
-	FlowSamples []*FlowSample
-
 	// A slice of pointers to FlowSet. Each element is instance of (Data)FlowSet
-	// found in this packet
-	//FlowSamples []*FlowSample
+	FlowSamples []*FlowSample
 
 	// Buffer is a slice pointing to the original byte array that this packet was decoded from.
 	// This field is only populated if debug level is at least 2
@@ -45,6 +41,7 @@ var (
 	sizeOfextendedRouterDataBottom = unsafe.Sizeof(extendedRouterDataBottom{})
 )
 
+// Header is an sflow version 5 header
 type Header struct {
 	Version          uint32
 	AgentAddressType uint32
@@ -67,6 +64,7 @@ type headerBottom struct {
 	SubAgentID     uint32
 }
 
+// FlowSample is an sflow version 5 flow sample
 type FlowSample struct {
 	FlowSampleHeader    *FlowSampleHeader
 	RawPacketHeader     *RawPacketHeader
@@ -74,6 +72,7 @@ type FlowSample struct {
 	ExtendedRouterData  *ExtendedRouterData
 }
 
+// FlowSampleHeader is an sflow version 5 flow sample header
 type FlowSampleHeader struct {
 	FlowRecord         uint32
 	OutputIf           uint32
@@ -87,6 +86,7 @@ type FlowSampleHeader struct {
 	EnterpriseType     uint32
 }
 
+// RawPacketHeader is a raw packet header
 type RawPacketHeader struct {
 	OriginalPacketLength uint32
 	PayloadRemoved       uint32
@@ -107,6 +107,7 @@ type extendedRouterDataBottom struct {
 	NextHopSourceMask      uint32
 }
 
+// ExtendedRouterData represents sflow version 5 extended router data
 type ExtendedRouterData struct {
 	NextHopDestinationMask uint32
 	NextHopSourceMask      uint32

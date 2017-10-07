@@ -13,36 +13,39 @@
 package frontend
 
 import (
-	"bufio"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof" // Needed for profiling only
-	"os"
-	"regexp"
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/database"
+	"github.com/taktv6/tflow2/iana"
+	"github.com/taktv6/tflow2/intfmapper"
 	"github.com/taktv6/tflow2/stats"
 )
 
 // Frontend represents the web interface
 type Frontend struct {
-	protocols map[string]string
-	indexHTML string
-	flowDB    *database.FlowDatabase
+	protocols  map[string]string
+	indexHTML  string
+	flowDB     *database.FlowDatabase
+	agents     []config.Agent
+	intfMapper *intfmapper.Mapper
+	iana       *iana.IANA
 }
 
 // New creates a new `Frontend`
-func New(addr string, protoNumsFilename string, fdb *database.FlowDatabase) *Frontend {
+func New(addr string, protoNumsFilename string, fdb *database.FlowDatabase, agents []config.Agent, intfMapper *intfmapper.Mapper, iana *iana.IANA) *Frontend {
 	fe := &Frontend{
-		flowDB: fdb,
+		flowDB:     fdb,
+		agents:     agents,
+		intfMapper: intfMapper,
+		iana:       iana,
 	}
-	fe.populateProtocols(protoNumsFilename)
 	fe.populateIndexHTML()
 	http.HandleFunc("/", fe.httpHandler)
 	go http.ListenAndServe(addr, nil)
@@ -60,29 +63,39 @@ func (fe *Frontend) populateIndexHTML() {
 	fe.indexHTML = string(html)
 }
 
-func (fe *Frontend) populateProtocols(protoNumsFilename string) {
-	f, err := os.Open(protoNumsFilename)
-	if err != nil {
-		glog.Errorf("Couldn't open protoNumsFile: %v\n", err)
-		return
+func (fe *Frontend) agentsHandler(w http.ResponseWriter, r *http.Request) {
+	type routerJSON struct {
+		Name       string
+		Interfaces []string
 	}
-	r := csv.NewReader(bufio.NewReader(f))
-	fe.protocols = make(map[string]string)
-	for {
-		record, err := r.Read()
-		if err == io.EOF {
-			break
+	type routersJSON struct {
+		Agents []routerJSON
+	}
+
+	data := routersJSON{
+		Agents: make([]routerJSON, 0),
+	}
+
+	for _, agent := range fe.agents {
+		a := routerJSON{
+			Name:       *agent.Name,
+			Interfaces: make([]string, 0),
 		}
 
-		ok, err := regexp.Match("^[0-9]{1,3}$", []byte(record[0]))
-		if err != nil {
-			fmt.Printf("Regex: %v\n", err)
-			continue
+		intfmap := fe.intfMapper.GetInterfaceIDByName(a.Name)
+		for name := range intfmap {
+			a.Interfaces = append(a.Interfaces, name)
 		}
-		if ok {
-			fe.protocols[record[0]] = record[1]
-		}
+
+		data.Agents = append(data.Agents, a)
 	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Marshal failed: %v", err), 500)
+	}
+
+	fmt.Fprintf(w, "%s", string(b))
 }
 
 func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -101,8 +114,8 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 		fe.getProtocols(w, r)
 	case "/metrics":
 		fe.prometheusHandler(w, r)
-	case "/routers":
-		fileHandler(w, r, "routers.json")
+	case "/agents":
+		fe.agentsHandler(w, r)
 	case "/tflow2.css":
 		fileHandler(w, r, "tflow2.css")
 	case "/tflow2.js":
@@ -113,7 +126,7 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fe *Frontend) getProtocols(w http.ResponseWriter, r *http.Request) {
-	output, err := json.Marshal(fe.protocols)
+	output, err := json.Marshal(fe.iana.GetIPProtocolsByName())
 	if err != nil {
 		glog.Warningf("Unable to marshal: %v", err)
 		http.Error(w, "Unable to marshal data", 500)
@@ -143,7 +156,7 @@ func (fe *Frontend) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (fe *Frontend) queryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	query, errors := translateQuery(r.URL.Query())
+	query, errors := fe.translateQuery(r.URL.Query())
 	if errors != nil {
 		http.Error(w, "Unable to parse query:", 422)
 		for _, err := range errors {

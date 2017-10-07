@@ -22,6 +22,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/taktv6/tflow2/iana"
+	"github.com/taktv6/tflow2/intfmapper"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/taktv6/tflow2/avltree"
@@ -34,34 +37,40 @@ type FlowsByTimeRtr map[int64]map[string]*TimeGroup
 
 // FlowDatabase represents a flow database object
 type FlowDatabase struct {
-	flows       FlowsByTimeRtr
-	lock        sync.RWMutex
-	maxAge      int64
-	aggregation int64
-	lastDump    int64
-	compLevel   int
-	samplerate  int
-	storage     string
-	debug       int
-	anonymize   bool
-	Input       chan *netflow.Flow
+	flows          FlowsByTimeRtr
+	lock           sync.RWMutex
+	maxAge         int64
+	aggregation    int64
+	lastDump       int64
+	compLevel      int
+	samplerate     int
+	storage        string
+	debug          int
+	anonymize      bool
+	Input          chan *netflow.Flow
+	intfMapper     *intfmapper.Mapper
+	agentsNameByIP map[string]string
+	iana           *iana.IANA
 }
 
 const anyIndex = uint8(0)
 
 // New creates a new FlowDatabase and returns a pointer to it
-func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debug int, compLevel int, storage string, anonymize bool) *FlowDatabase {
+func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debug int, compLevel int, storage string, anonymize bool, intfMapper *intfmapper.Mapper, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
 	flowDB := &FlowDatabase{
-		maxAge:      maxAge,
-		aggregation: aggregation,
-		compLevel:   compLevel,
-		samplerate:  samplerate,
-		Input:       make(chan *netflow.Flow),
-		lastDump:    time.Now().Unix(),
-		storage:     storage,
-		debug:       debug,
-		flows:       make(FlowsByTimeRtr),
-		anonymize:   anonymize,
+		maxAge:         maxAge,
+		aggregation:    aggregation,
+		compLevel:      compLevel,
+		samplerate:     samplerate,
+		Input:          make(chan *netflow.Flow),
+		lastDump:       time.Now().Unix(),
+		storage:        storage,
+		debug:          debug,
+		flows:          make(FlowsByTimeRtr),
+		anonymize:      anonymize,
+		intfMapper:     intfMapper,
+		agentsNameByIP: agentsNameByIP,
+		iana:           iana,
 	}
 
 	for i := 0; i < numAddWorker; i++ {
@@ -108,20 +117,21 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 	timeGroup, ok := flows[rtr]
 	if !ok {
 		timeGroup = &TimeGroup{
-			Any:       newMapTree(),
-			SrcAddr:   newMapTree(),
-			DstAddr:   newMapTree(),
-			Protocol:  newMapTree(),
-			IntIn:     newMapTree(),
-			IntOut:    newMapTree(),
-			NextHop:   newMapTree(),
-			SrcAs:     newMapTree(),
-			DstAs:     newMapTree(),
-			NextHopAs: newMapTree(),
-			SrcPfx:    newMapTree(),
-			DstPfx:    newMapTree(),
-			SrcPort:   newMapTree(),
-			DstPort:   newMapTree(),
+			Any:               newMapTree(),
+			SrcAddr:           newMapTree(),
+			DstAddr:           newMapTree(),
+			Protocol:          newMapTree(),
+			IntIn:             newMapTree(),
+			IntOut:            newMapTree(),
+			NextHop:           newMapTree(),
+			SrcAs:             newMapTree(),
+			DstAs:             newMapTree(),
+			NextHopAs:         newMapTree(),
+			SrcPfx:            newMapTree(),
+			DstPfx:            newMapTree(),
+			SrcPort:           newMapTree(),
+			DstPort:           newMapTree(),
+			InterfaceIDByName: fdb.intfMapper.GetInterfaceIDByName(rtr),
 		}
 		flows[rtr] = timeGroup
 	}
@@ -133,8 +143,14 @@ func (fdb *FlowDatabase) getTimeGroup(fl *netflow.Flow, rtr string) *TimeGroup {
 func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	// build indices for map access
 	rtrip := net.IP(fl.Router)
-	rtr := rtrip.String()
-	timeGroup := fdb.getTimeGroup(fl, rtr)
+
+	if _, ok := fdb.agentsNameByIP[rtrip.String()]; !ok {
+		glog.Warningf("Unknown flow source: %s", rtrip.String())
+		return
+	}
+
+	rtrName := fdb.agentsNameByIP[rtrip.String()]
+	timeGroup := fdb.getTimeGroup(fl, rtrName)
 
 	fdb.lock.RLock()
 	defer fdb.lock.RUnlock()
@@ -206,25 +222,40 @@ func (fdb *FlowDatabase) Dumper() {
 
 func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 	fdb.lock.RLock()
+	tg := fdb.flows[ts][router]
 	tree := fdb.flows[ts][router].Any.Get(anyIndex)
 	fdb.lock.RUnlock()
 
+	// Create flow proto buffer
 	flows := &netflow.Flows{}
 
+	// Populate interface mapping
+	for name, id := range tg.InterfaceIDByName {
+		flows.InterfaceMapping = append(flows.InterfaceMapping, &netflow.Intf{
+			Id:   uint32(id),
+			Name: name,
+		})
+	}
+
+	// Write flows into `flows` proto buffer
 	tree.Each(dump, fdb.anonymize, flows)
 
 	if fdb.debug > 1 {
 		glog.Warningf("flows contains %d flows", len(flows.Flows))
 	}
+
+	// Marshal flows into proto buffer
 	buffer, err := proto.Marshal(flows)
 	if err != nil {
 		glog.Errorf("unable to marshal flows into pb: %v", err)
 		return
 	}
 
+	// Create dir if doesn't exist
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
 	os.Mkdir(fmt.Sprintf("%s/%s", fdb.storage, ymd), 0700)
 
+	// Create file
 	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, router))
 	if err != nil {
 		glog.Errorf("couldn't create file: %v", err)
@@ -237,6 +268,8 @@ func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 		glog.Errorf("invalud gzip compression level: %v", err)
 		return
 	}
+
+	// Compress and write file
 	_, err = gz.Write(buffer)
 	gz.Close()
 

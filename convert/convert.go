@@ -78,6 +78,13 @@ func UintX(data []byte) (ret uint64) {
 	return ret
 }
 
+// Uint8Byte converts a uint8 to a byte slice in BigEndian
+func Uint8Byte(data uint8) (ret []byte) {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, data)
+	return buf.Bytes()
+}
+
 // Uint16Byte converts a uint16 to a byte slice in BigEndian
 func Uint16Byte(data uint16) (ret []byte) {
 	buf := new(bytes.Buffer)

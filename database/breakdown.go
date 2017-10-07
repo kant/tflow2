@@ -7,6 +7,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/avltree"
+	"github.com/taktv6/tflow2/iana"
+	"github.com/taktv6/tflow2/intfmapper"
 	"github.com/taktv6/tflow2/netflow"
 )
 
@@ -32,23 +34,27 @@ type BreakdownFlags struct {
 	DstPfx     bool
 	SrcPort    bool
 	DstPort    bool
+	IntInName  bool
+	IntOutName bool
 }
 
 var breakdownLabels = map[int]string{
-	FieldFamily:    "Family",
-	FieldSrcAddr:   "SrcAddr",
-	FieldDstAddr:   "DstAddr",
-	FieldProtocol:  "Protocol",
-	FieldIntIn:     "IntIn",
-	FieldIntOut:    "IntOut",
-	FieldNextHop:   "NextHop",
-	FieldSrcAs:     "SrcAsn",
-	FieldDstAs:     "DstAsn",
-	FieldNextHopAs: "NextHopAsn",
-	FieldSrcPfx:    "SrcPfx",
-	FieldDstPfx:    "DstPfx",
-	FieldSrcPort:   "SrcPort",
-	FieldDstPort:   "DstPort",
+	FieldFamily:     "Family",
+	FieldSrcAddr:    "SrcAddr",
+	FieldDstAddr:    "DstAddr",
+	FieldProtocol:   "Protocol",
+	FieldIntIn:      "IntIn",
+	FieldIntOut:     "IntOut",
+	FieldNextHop:    "NextHop",
+	FieldSrcAs:      "SrcAsn",
+	FieldDstAs:      "DstAsn",
+	FieldNextHopAs:  "NextHopAsn",
+	FieldSrcPfx:     "SrcPfx",
+	FieldDstPfx:     "DstPfx",
+	FieldSrcPort:    "SrcPort",
+	FieldDstPort:    "DstPort",
+	FieldIntInName:  "IntInName",
+	FieldIntOutName: "IntOutName",
 }
 
 // GetBreakdownLabels returns a sorted list of known breakdown labels
@@ -68,6 +74,8 @@ func GetBreakdownLabels() []string {
 		breakdownLabels[FieldDstPfx],
 		breakdownLabels[FieldSrcPort],
 		breakdownLabels[FieldDstPort],
+		breakdownLabels[FieldIntInName],
+		breakdownLabels[FieldIntOutName],
 	}
 }
 
@@ -119,6 +127,11 @@ func (bf *BreakdownFlags) Set(keys []string) error {
 			bf.SrcPort = true
 		case breakdownLabels[FieldDstPort]:
 			bf.DstPort = true
+		case breakdownLabels[FieldIntInName]:
+			bf.IntInName = true
+		case breakdownLabels[FieldIntOutName]:
+			bf.IntOutName = true
+
 		default:
 			return fmt.Errorf("invalid breakdown key: %s", key)
 		}
@@ -171,6 +184,12 @@ func (bf *BreakdownFlags) Count() (count int) {
 	if bf.DstPort {
 		count++
 	}
+	if bf.IntInName {
+		count++
+	}
+	if bf.IntOutName {
+		count++
+	}
 
 	return
 }
@@ -178,14 +197,16 @@ func (bf *BreakdownFlags) Count() (count int) {
 // breakdown build all possible relevant keys of flows for flows in tree `node`
 // and builds sums for each key in order to allow us to find top combinations
 func breakdown(node *avltree.TreeNode, vals ...interface{}) {
-	if len(vals) != 3 {
+	if len(vals) != 5 {
 		glog.Errorf("lacking arguments")
 		return
 	}
 
-	bd := vals[0].(BreakdownFlags)
-	sums := vals[1].(*concurrentResSum)
-	buckets := vals[2].(BreakdownMap)
+	intfMap := vals[0].(intfmapper.InterfaceNameByID)
+	iana := vals[1].(*iana.IANA)
+	bd := vals[2].(BreakdownFlags)
+	sums := vals[3].(*concurrentResSum)
+	buckets := vals[4].(BreakdownMap)
 	fl := node.Value.(*netflow.Flow)
 
 	key := BreakdownKey{}
@@ -200,13 +221,21 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 		key[FieldDstAddr] = net.IP(fl.DstAddr).String()
 	}
 	if bd.Protocol {
-		key[FieldProtocol] = fmt.Sprintf("%d", fl.Protocol)
+		key[FieldProtocol] = fmt.Sprintf("%s", iana.GetIPProtocolsByID()[uint8(fl.Protocol)])
 	}
 	if bd.IntIn {
 		key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
 	}
 	if bd.IntOut {
 		key[FieldIntOut] = fmt.Sprintf("%d", fl.IntOut)
+	}
+	if bd.IntInName {
+		name := intfMap[uint16(fl.IntIn)]
+		key[FieldIntIn] = fmt.Sprintf("%s", name)
+	}
+	if bd.IntOutName {
+		name := intfMap[uint16(fl.IntOut)]
+		key[FieldIntOut] = fmt.Sprintf("%s", name)
 	}
 	if bd.NextHop {
 		key[FieldNextHop] = net.IP(fl.NextHop).String()

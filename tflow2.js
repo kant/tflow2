@@ -13,7 +13,7 @@ var query;
 var protocols;
 var availableProtocols = [];
 var rtrs;
-var routers = [];
+var agents = [];
 var interfaces = [];
 
 function drawChart() {
@@ -102,21 +102,6 @@ function populateForm() {
         if (key.match(/^Timestamp/)){
             timezoneOffset = (new Date()).getTimezoneOffset()*60
             value = formatTimestamp(new Date((parseInt(value) - timezoneOffset )*1000))
-        } else if (key == "Router") {
-            value = getRouterById(value);
-            if (value == null) {
-                continue;
-            }
-        } else if (key == "IntIn" || key == "IntOut") {
-            value = getInterfaceById($("#Router").val(), value);
-            if (value == null) {
-                continue;
-            }
-        } else if (key == "Protocol") {
-            value = protocols[value];
-            if (value == null) {
-                continue;
-            }
         } else if (key == "Breakdown") {
             var breakdown = value.split(",")
             for (var i in breakdown) {
@@ -131,20 +116,24 @@ function populateForm() {
 }
 
 function loadInterfaceOptions() {
-    var rtr = $("#Router").val();
+    var rtr = $("#Agent").val();
     interfaces = [];
-    if (!rtrs[rtr]) {
-        return;
-    }
-    for (var k in rtrs[rtr]["interfaces"]) {
-        interfaces.push(rtrs[rtr]["interfaces"][k]);
+    for (var k in rtrs.Agents) {
+        if (rtrs.Agents[k].Name != rtr) {
+            continue
+        }
+
+        for (var l in rtrs.Agents[k].Interfaces) {
+            interfaces.push(rtrs.Agents[k].Interfaces[l]);
+        }
+
     }
 
-    $("#IntIn").autocomplete({
+    $("#IntInName").autocomplete({
         source: interfaces
     });
 
-    $("#IntOut").autocomplete({
+    $("#IntOutName").autocomplete({
         source: interfaces
     });
 }
@@ -153,7 +142,7 @@ function loadProtocols() {
     return $.getJSON("/protocols", function(data) {
         protocols = data;
         for (var k in protocols) {
-            availableProtocols.push(protocols[k]);
+            availableProtocols.push(k);
         }
 
         $("#Protocol").autocomplete({
@@ -162,19 +151,22 @@ function loadProtocols() {
     });
 }
 
-function loadRouters() {
-    return $.getJSON("/routers", function(data) {
+function loadAgents() {
+    return $.getJSON("/agents", function(data) {
         rtrs = data;
-        for (var k in rtrs) {
-            routers.push(k);
+        for (var k in data.Agents) {
+            console.log(data.Agents[k].Name);
+            agents.push(data.Agents[k].Name);
+            console.log(k);
         }
 
-        $("#Router").autocomplete({
-            source: routers,
+        $("#Agent").autocomplete({
+            source: agents,
             change: function() {
                 loadInterfaceOptions();
             }
         });
+        
     });
 }
 
@@ -193,8 +185,8 @@ $(document).ready(function() {
         $("#Timestamp_lt").val(end);
     }
 
-    $.when(loadRouters(), loadProtocols()).done(function() {
-        $("#Router").on('input', function() {
+    $.when(loadAgents(), loadProtocols()).done(function() {
+        $("#Agent").on('input', function() {
             loadInterfaceOptions();
         })
         populateForm();
@@ -214,40 +206,6 @@ $(document).ready(function() {
     google.charts.setOnLoadCallback(drawChart);
 });
 
-function getProtocolId(name) {
-    for (var k in protocols) {
-        if (protocols[k] == name) {
-            return k;
-        }
-    }
-    return null;
-}
-
-function getIntId(rtr, name) {
-    if (!rtrs[rtr]) {
-        return null;
-    }
-    for (var k in rtrs[rtr]['interfaces']) {
-        if (rtrs[rtr]['interfaces'][k] == name) {
-            return k;
-        }
-    }
-    return null;
-}
-
-function getRouterById(id) {
-    for (var k in rtrs) {
-        if (rtrs[k]['id'] == id) {
-            return k;
-        }
-    }
-    return null;
-}
-
-function getInterfaceById(router, id) {
-    return rtrs[router]['interfaces'][id];
-}
-
 function submitQuery() {
     var breakdown = []
     var query = {};
@@ -262,18 +220,6 @@ function submitQuery() {
         
         if (this.id.match(/^Timestamp/)){
             value = Math.round(new Date(value).getTime() / 1000)
-        } else if (field == "Router") {
-            value = rtrs[value]['id'];
-        } else if (field == "IntIn" || field == "IntOut") {
-            value = getIntId($("#Router").val(), value)
-            if (value == null) {
-                return;
-            }
-        } else if (field == "Protocol") {
-            value = getProtocolId(value);
-            if (value == null) {
-                return;
-            }
         }
         query[field] = value + ""
     })

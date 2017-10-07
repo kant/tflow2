@@ -10,7 +10,7 @@ import (
 
 func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 
-	query, errors := translateQuery(r.URL.Query())
+	query, errors := fe.translateQuery(r.URL.Query())
 	if errors != nil {
 		http.Error(w, "Unable to parse query:", 422)
 		for _, err := range errors {

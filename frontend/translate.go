@@ -11,7 +11,7 @@ import (
 	"github.com/taktv6/tflow2/database"
 )
 
-func translateCondition(field, value string) (*database.Condition, error) {
+func (fe *Frontend) translateCondition(field, value string) (*database.Condition, error) {
 	var operatorStr string
 
 	// Extract operator if included in field name
@@ -33,14 +33,22 @@ func translateCondition(field, value string) (*database.Condition, error) {
 		}
 		operand = convert.Int64Byte(int64(op))
 
-	case database.FieldProtocol, database.FieldSrcPort, database.FieldDstPort, database.FieldIntIn, database.FieldIntOut:
+	case database.FieldProtocol:
+		id, err := strconv.Atoi(value)
+		operand = convert.Uint8Byte(uint8(id))
+		if err != nil {
+			protocolsByName := fe.iana.GetIPProtocolsByName()
+			operand = convert.Uint8Byte(protocolsByName[value])
+		}
+
+	case database.FieldSrcPort, database.FieldDstPort, database.FieldIntIn, database.FieldIntOut:
 		op, err := strconv.Atoi(value)
 		if err != nil {
 			return nil, err
 		}
 		operand = convert.Uint16Byte(uint16(op))
 
-	case database.FieldSrcAddr, database.FieldDstAddr, database.FieldRouter, database.FieldNextHop:
+	case database.FieldSrcAddr, database.FieldDstAddr, database.FieldNextHop:
 		operand = convert.IPByteSlice(value)
 
 	case database.FieldSrcAs, database.FieldDstAs, database.FieldNextHopAs:
@@ -56,6 +64,10 @@ func translateCondition(field, value string) (*database.Condition, error) {
 			return nil, err
 		}
 		operand = []byte(pfx.String())
+
+	case database.FieldIntInName, database.FieldIntOutName, database.FieldAgent:
+		operand = []byte(value)
+
 	default:
 		return nil, fmt.Errorf("unknown field: %s", field)
 	}
@@ -81,7 +93,7 @@ func translateCondition(field, value string) (*database.Condition, error) {
 }
 
 // translateQuery translates URL parameters to the internal represenation of a query
-func translateQuery(params url.Values) (q database.Query, errors []error) {
+func (fe *Frontend) translateQuery(params url.Values) (q database.Query, errors []error) {
 	for key, values := range params {
 		var err error
 		value := values[0]
@@ -92,7 +104,7 @@ func translateQuery(params url.Values) (q database.Query, errors []error) {
 			err = q.Breakdown.Set(strings.Split(value, ","))
 		default:
 			var cond *database.Condition
-			cond, err = translateCondition(key, value)
+			cond, err = fe.translateCondition(key, value)
 			if cond != nil {
 				q.Cond = append(q.Cond, *cond)
 			}

@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/taktv6/tflow2/avltree"
 	"github.com/taktv6/tflow2/convert"
+	"github.com/taktv6/tflow2/intfmapper"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/stats"
 )
@@ -39,7 +40,7 @@ const (
 // These constants are only used internally
 const (
 	FieldTimestamp = iota
-	FieldRouter
+	FieldAgent
 	FieldFamily
 	FieldSrcAddr
 	FieldDstAddr
@@ -54,26 +55,30 @@ const (
 	FieldDstPfx
 	FieldSrcPort
 	FieldDstPort
+	FieldIntInName
+	FieldIntOutName
 	FieldMax
 )
 
 var fieldNames = map[string]int{
-	"Timestamp": FieldTimestamp,
-	"Router":    FieldRouter,
-	"Family":    FieldFamily,
-	"SrcAddr":   FieldSrcAddr,
-	"DstAddr":   FieldDstAddr,
-	"Protocol":  FieldProtocol,
-	"IntIn":     FieldIntIn,
-	"IntOut":    FieldIntOut,
-	"NextHop":   FieldNextHop,
-	"SrcAs":     FieldSrcAs,
-	"DstAs":     FieldDstAs,
-	"NextHopAs": FieldNextHopAs,
-	"SrcPfx":    FieldSrcPfx,
-	"DstPfx":    FieldDstPfx,
-	"SrcPort":   FieldSrcPort,
-	"DstPort":   FieldDstPort,
+	"Timestamp":  FieldTimestamp,
+	"Agent":      FieldAgent,
+	"Family":     FieldFamily,
+	"SrcAddr":    FieldSrcAddr,
+	"DstAddr":    FieldDstAddr,
+	"Protocol":   FieldProtocol,
+	"IntIn":      FieldIntIn,
+	"IntOut":     FieldIntOut,
+	"NextHop":    FieldNextHop,
+	"SrcAs":      FieldSrcAs,
+	"DstAs":      FieldDstAs,
+	"NextHopAs":  FieldNextHopAs,
+	"SrcPfx":     FieldSrcPfx,
+	"DstPfx":     FieldDstPfx,
+	"SrcPort":    FieldSrcPort,
+	"DstPort":    FieldDstPort,
+	"IntInName":  FieldIntInName,
+	"IntOutName": FieldIntOutName,
 }
 
 type void struct{}
@@ -119,10 +124,10 @@ func (conditions Conditions) Includes(field int, operator int) bool {
 }
 
 // loadFromDisc loads netflow data from disk into in memory data structure
-func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, resSum *concurrentResSum) (BreakdownMap, error) {
+func (fdb *FlowDatabase) loadFromDisc(ts int64, agent string, query Query, resSum *concurrentResSum) (BreakdownMap, error) {
 	res := avltree.New()
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
-	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, router)
+	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, agent)
 	fh, err := os.Open(filename)
 	if err != nil {
 		if fdb.debug > 0 {
@@ -156,30 +161,36 @@ func (fdb *FlowDatabase) loadFromDisc(ts int64, router string, query Query, resS
 		return nil, err
 	}
 
+	// Create interface mapping
+	interfaceIDByName := make(intfmapper.InterfaceIDByName)
+	for _, m := range flows.InterfaceMapping {
+		interfaceIDByName[m.Name] = uint16(m.Id)
+	}
+
 	if fdb.debug > 1 {
 		glog.Infof("file %s contains %d flows", filename, len(flows.Flows))
 	}
 
 	// Validate flows and add them to res tree
 	for _, fl := range flows.Flows {
-		if validateFlow(fl, query) {
+		if validateFlow(fl, query, interfaceIDByName) {
 			res.Insert(fl, fl, ptrIsSmaller)
 		}
 	}
 
 	// Breakdown
 	resTime := make(BreakdownMap)
-	res.Each(breakdown, query.Breakdown, resSum, resTime)
+	res.Each(breakdown, fdb.intfMapper.GetInterfaceNameByID(agent), fdb.iana, query.Breakdown, resSum, resTime)
 
 	return resTime, err
 }
 
-func validateFlow(fl *netflow.Flow, query Query) bool {
+func validateFlow(fl *netflow.Flow, query Query, interfaceIDByName intfmapper.InterfaceIDByName) bool {
 	for _, c := range query.Cond {
 		switch c.Field {
 		case FieldTimestamp:
 			continue
-		case FieldRouter:
+		case FieldAgent:
 			continue
 		case FieldFamily:
 			if fl.Family != uint32(convert.Uint16b(c.Operand)) {
@@ -250,22 +261,33 @@ func validateFlow(fl *netflow.Flow, query Query) bool {
 				return false
 			}
 			continue
+		case FieldIntInName:
+			id := interfaceIDByName[string(c.Operand)]
+			if uint16(fl.IntIn) != id {
+				return false
+			}
+			continue
+		case FieldIntOutName:
+			id := interfaceIDByName[string(c.Operand)]
+			if uint16(fl.IntOut) != id {
+				return false
+			}
+			continue
 		}
 	}
 	return true
 }
 
-func (fdb *FlowDatabase) getRouter(q *Query) (string, error) {
+func (fdb *FlowDatabase) getAgent(q *Query) (string, error) {
 	rtr := ""
 	for _, c := range q.Cond {
-		if c.Field == FieldRouter {
-			iprtr := net.IP(c.Operand)
-			rtr = iprtr.String()
+		if c.Field == FieldAgent {
+			rtr = string(c.Operand)
 		}
 	}
 	if rtr == "" {
-		glog.Warningf("Router is mandatory cirteria")
-		return "", fmt.Errorf("Router criteria not found")
+		glog.Warningf("Agent is mandatory cirteria")
+		return "", fmt.Errorf("Agent criteria not found")
 	}
 
 	return rtr, nil
@@ -311,7 +333,7 @@ func (fdb *FlowDatabase) getResultByTS(resSum *concurrentResSum, ts int64, q *Qu
 		return map[BreakdownKey]uint64{}
 	}
 
-	return timeGroups[rtr].filterAndBreakdown(resSum, q)
+	return timeGroups[rtr].filterAndBreakdown(resSum, q, fdb.iana, fdb.intfMapper.GetInterfaceNameByID(rtr))
 }
 
 func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, topN int) map[BreakdownKey]void {
@@ -343,7 +365,7 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 
 	glog.Infof("RunQuery: start=%d end=%d current=%d", start, end, fdb.CurrentTimeslot())
 
-	rtr, err := fdb.getRouter(q)
+	rtr, err := fdb.getAgent(q)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get router: %v", err)
 	}

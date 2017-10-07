@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"net"
 	"testing"
-	"unsafe"
 
 	"github.com/taktv6/tflow2/convert"
 )
@@ -92,9 +91,6 @@ func TestDecode(t *testing.T) {
 	if packet.Header.AgentAddress.String() != "10.205.19.14" {
 		t.Errorf("Incorrect AgentAddress: Exptected 10.205.19.14 got %s", packet.Header.AgentAddress.String())
 	}
-
-	dump(packet)
-
 }
 
 func dump(packet *Packet) {
@@ -108,14 +104,6 @@ func dump(packet *Packet) {
 			fmt.Printf("Raw packet header:\n")
 			fmt.Printf("OriginalPacketLength: %d\n", fs.RawPacketHeader.OriginalPacketLength)
 			fmt.Printf("Original Packet:\n")
-			data := unsafe.Pointer(uintptr(fs.RawPacketHeader.RawData) - uintptr(fs.RawPacketHeader.OriginalPacketLength))
-			ptr := uintptr(data)
-			for i := uint32(0); i < fs.RawPacketHeader.OriginalPacketLength; i++ {
-				d := (*byte)(unsafe.Pointer(ptr))
-				fmt.Printf(" %v ", *d)
-				ptr++
-			}
-			fmt.Printf("\nEND OF DUMP\n")
 		}
 	}
 }
