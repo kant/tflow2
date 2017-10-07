@@ -221,7 +221,12 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 		key[FieldDstAddr] = net.IP(fl.DstAddr).String()
 	}
 	if bd.Protocol {
-		key[FieldProtocol] = fmt.Sprintf("%s", iana.GetIPProtocolsByID()[uint8(fl.Protocol)])
+		protoMap := iana.GetIPProtocolsByID()
+		if _, ok := protoMap[uint8(fl.Protocol)]; ok {
+			key[FieldProtocol] = fmt.Sprintf("%s", protoMap[uint8(fl.Protocol)])
+		} else {
+			key[FieldProtocol] = fmt.Sprintf("%d", fl.Protocol)
+		}
 	}
 	if bd.IntIn {
 		key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
@@ -230,12 +235,20 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 		key[FieldIntOut] = fmt.Sprintf("%d", fl.IntOut)
 	}
 	if bd.IntInName {
-		name := intfMap[uint16(fl.IntIn)]
-		key[FieldIntIn] = fmt.Sprintf("%s", name)
+		if _, ok := intfMap[uint16(fl.IntIn)]; ok {
+			name := intfMap[uint16(fl.IntIn)]
+			key[FieldIntIn] = fmt.Sprintf("%s", name)
+		} else {
+			key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
+		}
 	}
 	if bd.IntOutName {
-		name := intfMap[uint16(fl.IntOut)]
-		key[FieldIntOut] = fmt.Sprintf("%s", name)
+		if _, ok := intfMap[uint16(fl.IntOut)]; ok {
+			name := intfMap[uint16(fl.IntOut)]
+			key[FieldIntOut] = fmt.Sprintf("%s", name)
+		} else {
+			key[FieldIntOut] = fmt.Sprintf("%d", fl.IntIn)
+		}
 	}
 	if bd.NextHop {
 		key[FieldNextHop] = net.IP(fl.NextHop).String()
