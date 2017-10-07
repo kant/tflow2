@@ -52,28 +52,25 @@ func main() {
 	// Initialize statistics module
 	stats.Init()
 
+	chans := make([]chan *netflow.Flow, 0)
+
 	// Netflow v9 Server
-	var nfs *nfserver.NetflowServer
 	if *cfg.NetflowV9.Enabled {
-		nfs = nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		chans = append(chans, nfs.Output)
 	}
 
 	// IPFIX Server
-	var ifs *ifserver.IPFIXServer
 	if *cfg.IPFIX.Enabled {
-		ifs = ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		chans = append(chans, ifs.Output)
 	}
 
 	// sFlow Server
-	var sfs *sfserver.SflowServer
 	if *cfg.Sflow.Enabled {
-		sfs = sfserver.New(*cfg.Sflow.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		sfs := sfserver.New(*cfg.Sflow.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		chans = append(chans, sfs.Output)
 	}
-
-	chans := make([]chan *netflow.Flow, 0)
-	chans = append(chans, nfs.Output)
-	chans = append(chans, ifs.Output)
-	chans = append(chans, sfs.Output)
 
 	// Start the database layer
 	flowDB := database.New(*cfg.AggregationPeriod, *cfg.CacheTime, *dbAddWorkers, *samplerate, *cfg.Debug, *cfg.CompressionLevel, *cfg.DataDir, *cfg.Anonymize)

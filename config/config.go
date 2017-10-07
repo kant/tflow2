@@ -50,32 +50,45 @@ var (
 	dfltDataDir              = "data"
 	dfltAnonymize            = false
 	dfltCacheTime            = int64(1800)
-	dfltNetflowV9Listen      = strPtr(":2055")
-	dfltNetflowV9            = Server{
+
+	dfltNetflowV9Listen = strPtr(":2055")
+	dfltNetflowV9       = Server{
 		Enabled: boolPtr(true),
 		Listen:  dfltNetflowV9Listen,
 	}
+
+	dfltServerEnabled = boolPtr(true)
+
 	dfltIPFIXListen = strPtr(":4739")
 	dfltIPFIX       = Server{
 		Enabled: boolPtr(true),
 		Listen:  dfltIPFIXListen,
 	}
+
 	dfltSflowListen = strPtr(":6343")
 	dfltSflow       = Server{
 		Enabled: boolPtr(true),
 		Listen:  dfltSflowListen,
 	}
+
 	dfltFrontendListen = strPtr(":4444")
 	dfltFrontend       = Server{
 		Enabled: boolPtr(true),
 		Listen:  dfltFrontendListen,
 	}
+
+	dfltBIRDSocket      = strPtr("/var/run/bird/bird.ctl")
+	dfltBIRD6Socket     = strPtr("/var/run/bird/bird6.ctl")
 	dfltBGPAugmentation = BGPAugment{
 		Enabled:     boolPtr(false),
-		BIRDSocket:  strPtr("/var/run/bird/bird.ctl"),
-		BIRD6Socket: strPtr("/var/run/bird/bird6.ctl"),
+		BIRDSocket:  dfltBIRDSocket,
+		BIRD6Socket: dfltBIRD6Socket,
 	}
 )
+
+func bgpPtr(bgp BGPAugment) *BGPAugment {
+	return &bgp
+}
 
 func srvPtr(srv Server) *Server {
 	return &srv
@@ -126,12 +139,18 @@ func (cfg *Config) defaults() {
 	if cfg.NetflowV9.Listen == nil {
 		cfg.NetflowV9.Listen = dfltNetflowV9Listen
 	}
+	if cfg.NetflowV9.Enabled == nil {
+		cfg.NetflowV9.Enabled = dfltServerEnabled
+	}
 
 	if cfg.IPFIX == nil {
 		cfg.IPFIX = srvPtr(dfltIPFIX)
 	}
 	if cfg.IPFIX.Listen == nil {
 		cfg.IPFIX.Listen = dfltIPFIXListen
+	}
+	if cfg.IPFIX.Enabled == nil {
+		cfg.IPFIX.Enabled = dfltServerEnabled
 	}
 
 	if cfg.Sflow == nil {
@@ -140,12 +159,28 @@ func (cfg *Config) defaults() {
 	if cfg.Sflow.Listen == nil {
 		cfg.Sflow.Listen = dfltSflowListen
 	}
+	if cfg.Sflow.Enabled == nil {
+		cfg.Sflow.Enabled = dfltServerEnabled
+	}
 
 	if cfg.Frontend == nil {
 		cfg.Frontend = srvPtr(dfltFrontend)
 	}
 	if cfg.Frontend.Listen == nil {
 		cfg.Frontend.Listen = dfltFrontendListen
+	}
+	if cfg.Frontend.Enabled == nil {
+		cfg.Frontend.Enabled = dfltServerEnabled
+	}
+
+	if cfg.BGPAugmentation == nil {
+		cfg.BGPAugmentation = bgpPtr(dfltBGPAugmentation)
+	}
+	if cfg.BGPAugmentation.BIRDSocket == nil {
+		cfg.BGPAugmentation.BIRDSocket = dfltBIRDSocket
+	}
+	if cfg.BGPAugmentation.BIRD6Socket == nil {
+		cfg.BGPAugmentation.BIRD6Socket = dfltBIRD6Socket
 	}
 }
 
