@@ -11,13 +11,14 @@
 package sfserver
 
 import (
-	"DEV/src/tflow2/convert"
 	"fmt"
 	"net"
 	"testing"
 	"unsafe"
 
 	"github.com/golang/glog"
+
+	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/packet"
 	"github.com/taktv6/tflow2/sflow"
 )
