@@ -23,7 +23,7 @@ frontend:
   listen: ":4444"
 
 bgp_augmentation:
-  enabled: true
+  enabled: false
   bird_socket: "/var/run/bird/bird.ctl"
   bird6_socket: "/var/run/bird/bird6.ctl"
   
