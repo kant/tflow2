@@ -25,17 +25,20 @@ type Config struct {
 	Agents          []Agent     `yaml:"agents"`
 }
 
+// BGPAugment represents BGP augmentation configuration
 type BGPAugment struct {
 	Enabled     *bool   `yaml:"enabled"`
 	BIRDSocket  *string `yaml:"bird_socket"`
 	BIRD6Socket *string `yaml:"bird6_socket"`
 }
 
+// Server represents a server config
 type Server struct {
 	Enabled *bool   `yaml:"enabled"`
 	Listen  *string `yaml:"listen"`
 }
 
+// Agent represents an agent config
 type Agent struct {
 	Name          *string `yaml:"name"`
 	IPAddress     *string `yaml:"ip_address"`
@@ -110,6 +113,24 @@ func int64Ptr(x int64) *int64 {
 	return &x
 }
 
+// New reads a configuration file and returns a Config
+func New(filename string) (*Config, error) {
+	cfgFile, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read config file %s: %v", filename, err)
+	}
+
+	cfg := &Config{}
+	err = yaml.Unmarshal(cfgFile, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse yaml file: %v", err)
+	}
+
+	cfg.defaults()
+
+	return cfg, nil
+}
+
 func (cfg *Config) defaults() {
 	if cfg.AggregationPeriod == nil {
 		cfg.AggregationPeriod = int64Ptr(dfltAggregationPeriod)
@@ -182,21 +203,4 @@ func (cfg *Config) defaults() {
 	if cfg.BGPAugmentation.BIRD6Socket == nil {
 		cfg.BGPAugmentation.BIRD6Socket = dfltBIRD6Socket
 	}
-}
-
-func New(filename string) (*Config, error) {
-	cfgFile, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read config file %s: %v", filename, err)
-	}
-
-	cfg := &Config{}
-	err = yaml.Unmarshal(cfgFile, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to parse yaml file: %v", err)
-	}
-
-	cfg.defaults()
-
-	return cfg, nil
 }
