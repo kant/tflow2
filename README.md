@@ -5,9 +5,8 @@
 [![Coverage Status](https://coveralls.io/repos/taktv6/tflow2/badge.svg?branch=master&service=github)](https://coveralls.io/github/taktv6/tflow2?branch=master)
 [![Go ReportCard](http://goreportcard.com/badge/taktv6/tflow2)](http://goreportcard.com/report/taktv6/tflow2)
 
-tflow2 is an in memory netflow version 9 and IPFIX analyzer.
+tflow2 is an in memory netflow version 9, IPFIX and Sflow analyzer.
 It is designed for fast arbitrary queries and exports data to [Prometheus](https://prometheus.io/).
-
 
 ## Usage
 
@@ -27,38 +26,17 @@ The webinterface allows you to run queries against the collected data.
 Start time and router are mandatory criteria. If you don't provide any of
 these you will always receive an empty result.
 
-### Command line arguments
-`-aggregation=int` 
+### Config file
 
-  This is the time window in seconds used for aggregation of flows.
+There is YAML file as config. Defaults can be found in config.yml.example.
+You'll at least need to add your Netflow/IPFIX/Sflow agents and adjust (if you don't 
+want to work with interface IDs) your SNMP RO community.
+
+### Command line arguments
 
 `-alsologtostderr`
 
   Will send logs to stderr on top.
-
-`-anonymize=bool`
-
-  If set to true, IP addresses will be replaced with NULL before dumping
-  flows to disk. Default is false.
-
-`-bgp=bool`
-
-  tflow will connect to BIRD and BIRD6 unix domain sockets to augment flows
-  with prefix and autonomous system information. This is useful in case your
-  routers exported netflow data is lacking these. This is the case for example
-  if you use the ipt-NETFLOW on Linux.
-
-  BIRD needs a BGP session to each router that is emitting flow packets.
-  The protocol needs to be named like this: "nf_x_y_z_a" with x_y_z_a being the
-  source IP address of flow packets, e.g. nf_185_66_194_0
-
-`-birdSock=path`
-
-  This is the path to the unix domain socket to talk to BIRD.
-
-`-birdSock6=path`
-
-  This is the path to the unix domain socket to talk to BIRD6.
 
 `-channelBuffer=int`
 
@@ -68,11 +46,6 @@ these you will always receive an empty result.
 
   This is the amount of workers that are used to add flows into the in memory
   database.
-
-`-debug=int`
-
-  Debug level. 1 will give you some more information. 2 is not in use at
-  the moment. 3 will dump every single received netflow packet on the screen.
 
 `-log_backtrace_at`
 
@@ -85,24 +58,6 @@ these you will always receive an empty result.
 `-logtostderr`
 
   log to standard error instead of files.
-
-`-maxage=int`
-
-  Maximum age of flow data to keep in memory. Choose this parameter wisely or you
-  will run out of memory. Experience shows that 500k flows need about 50G of RAM.
-
-`-netflow=addr`
-
-  Address to use to receive netflow packets (default ":2055") via UDP.
-
-`-ipfix=addr`
-
-  Address to use to receive IPFIX packets (default ":4739") via UDP.
-
-`-protonums=path`
-
-  CSV file to read protocol definitions from (default "protocol_numbers.csv").
-  This is needed for suggestions in the web interface.
 
 `-samplerate=int`
 
@@ -125,18 +80,13 @@ these you will always receive an empty result.
 
   comma-separated list of pattern=N settings for file-filtered logging.
 
-`-web=addr`
-
-  Address to use for web service (default ":4444")
-
 ## Limitations
 
-This software currently only supports receiving netflow packets over IPv4.
 Please be aware this software is not platform indipendent. It will only work
 on little endian machines (such as x86)
 
 ## License
 
-(c) Google, 2017. Licensed under [Apache-2](LICENSE) license.
+(c) Google, EXARING, Oliver Herms, 2017. Licensed under [Apache-2](LICENSE) license.
 
 This is not an official Google product.
