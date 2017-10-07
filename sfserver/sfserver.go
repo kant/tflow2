@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2017 EXARING AG. All Rights Reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,11 +22,11 @@ import (
 	"unsafe"
 
 	"github.com/golang/glog"
+	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/packet"
 	"github.com/taktv6/tflow2/sflow"
 	"github.com/taktv6/tflow2/stats"
-	"github.com/taktv6/tflow2/convert"
 )
 
 // SflowServer represents a sflow Collector instance

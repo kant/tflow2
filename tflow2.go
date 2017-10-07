@@ -1,4 +1,4 @@
-// Copyright 2017 Google Inc. All Rights Reserved.
+// Copyright 2017 Google Inc, EXARING AG. All Rights Reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,7 +17,9 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/annotator"
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/database"
 	"github.com/taktv6/tflow2/frontend"
 	"github.com/taktv6/tflow2/ifserver"
@@ -28,48 +30,70 @@ import (
 )
 
 var (
-	nfAddr        = flag.String("netflow", ":2055", "Address to use to receive netflow packets")
-	ipfixAddr     = flag.String("ipfix", ":4739", "Address to use to receive ipfix packets")
-	sfAddr        = flag.String("sflow", ":6343", "Address to use to receive sflow packets")
-	aggregation   = flag.Int64("aggregation", 60, "Time to groups flows together into one data point")
-	maxAge        = flag.Int64("maxage", 1800, "Maximum age of saved flows")
-	web           = flag.String("web", ":4444", "Address to use for web service")
-	birdSock      = flag.String("birdsock", "/var/run/bird/bird.ctl", "Unix domain socket to communicate with BIRD")
-	birdSock6     = flag.String("birdsock6", "/var/run/bird/bird6.ctl", "Unix domain socket to communicate with BIRD6")
-	bgpAugment    = flag.Bool("bgp", true, "Use BIRD to augment BGP flow information")
 	protoNums     = flag.String("protonums", "protocol_numbers.csv", "CSV file to read protocol definitions from")
 	sockReaders   = flag.Int("sockreaders", 24, "Num of go routines reading and parsing netflow packets")
 	channelBuffer = flag.Int("channelbuffer", 1024, "Size of buffer for channels")
 	dbAddWorkers  = flag.Int("dbaddworkers", 24, "Number of workers adding flows into database")
 	nAggr         = flag.Int("numaggr", 12, "Number of flow aggregator workers")
 	samplerate    = flag.Int("samplerate", 1, "Samplerate of routers")
-	debugLevel    = flag.Int("debug", 0, "Debug level, 0: none, 1: +shows if we are receiving flows we are lacking templates for, 2: -, 3: +dump all packets on screen")
-	compLevel     = flag.Int("comp", 6, "gzip compression level for data storage on disk")
-	dataDir       = flag.String("data", "./data", "Path to store long term flow logs")
-	anonymize     = flag.Bool("anonymize", false, "Replace IP addresses with NULL before dumping flows to disk")
+
+	configFile = flag.String("config", "config.yml", "tflow2 configuration file")
 )
 
 func main() {
-	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	flag.Parse()
+
+	cfg, err := config.New(*configFile)
+	if err != nil {
+		glog.Exitf("Unable to get configuration: %v", err)
+	}
+
+	// Initialize statistics module
 	stats.Init()
 
-	nfs := nfserver.New(*nfAddr, *sockReaders, *bgpAugment, *debugLevel)
+	// Netflow v9 Server
+	var nfs *nfserver.NetflowServer
+	if *cfg.NetflowV9.Enabled {
+		nfs = nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+	}
 
-	ifs := ifserver.New(*ipfixAddr, *sockReaders, *bgpAugment, *debugLevel)
+	// IPFIX Server
+	var ifs *ifserver.IPFIXServer
+	if *cfg.IPFIX.Enabled {
+		ifs = ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+	}
 
-	sfs := sfserver.New(*sfAddr, *sockReaders, *bgpAugment, *debugLevel)
+	// sFlow Server
+	var sfs *sfserver.SflowServer
+	if *cfg.Sflow.Enabled {
+		sfs = sfserver.New(*cfg.Sflow.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+	}
 
 	chans := make([]chan *netflow.Flow, 0)
 	chans = append(chans, nfs.Output)
 	chans = append(chans, ifs.Output)
 	chans = append(chans, sfs.Output)
 
-	flowDB := database.New(*aggregation, *maxAge, *dbAddWorkers, *samplerate, *debugLevel, *compLevel, *dataDir, *anonymize)
+	// Start the database layer
+	flowDB := database.New(*cfg.AggregationPeriod, *cfg.CacheTime, *dbAddWorkers, *samplerate, *cfg.Debug, *cfg.CompressionLevel, *cfg.DataDir, *cfg.Anonymize)
 
-	annotator.New(chans, flowDB.Input, *nAggr, *aggregation, *bgpAugment, *birdSock, *birdSock6, *debugLevel)
+	// Start the annotator layer
+	annotator.New(
+		chans,
+		flowDB.Input,
+		*nAggr,
+		*cfg.AggregationPeriod,
+		*cfg.BGPAugmentation.Enabled,
+		*cfg.BGPAugmentation.BIRDSocket,
+		*cfg.BGPAugmentation.BIRD6Socket,
+		*cfg.Debug,
+	)
 
-	frontend.New(*web, *protoNums, flowDB)
+	// Frontend
+	if *cfg.Frontend.Enabled {
+		frontend.New(*cfg.Frontend.Listen, *protoNums, flowDB)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
