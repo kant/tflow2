@@ -61,7 +61,7 @@ func (m *Mapper) startRenewWorkers() {
 				time.Sleep(time.Second * time.Duration(m.renewInterval))
 				err := m.renewMapping(agent)
 				if err != nil {
-					glog.Infof("Unable to renew interface mapping for %s: %v", agent.Name, err)
+					glog.Infof("Unable to renew interface mapping for %s: %v", *agent.Name, err)
 				}
 			}
 		}(agent)

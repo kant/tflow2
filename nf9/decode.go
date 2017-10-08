@@ -101,28 +101,31 @@ func decodeOption(packet *Packet, end unsafe.Pointer, size uintptr, remote net.I
 	for uintptr(end) > min {
 		headerPtr := unsafe.Pointer(uintptr(end) - sizeOfOptionsTemplateRecordHeader)
 
-		tmplRecs := &OptionsTemplateRecords{}
-		tmplRecs.Header = (*OptionsTemplateRecordHeader)(unsafe.Pointer(headerPtr))
+		tmplRecs := &TemplateRecords{}
+		hdr := (*OptionsTemplateRecordHeader)(unsafe.Pointer(headerPtr))
+		tmplRecs.Header = &TemplateRecordHeader{TemplateID: hdr.TemplateID}
 		tmplRecs.Packet = packet
 		tmplRecs.Records = make([]*TemplateRecord, 0, numPreAllocRecs)
 
 		ptr := headerPtr
 		// Process option scopes
-		for i := uint16(0); i < tmplRecs.Header.OptionScopeLength/uint16(sizeOfOptionScope); i++ {
+		for i := uint16(0); i < hdr.OptionScopeLength/uint16(sizeOfOptionScope); i++ {
 			optScope := (*OptionScope)(ptr)
 			tmplRecs.OptionScopes = append(tmplRecs.OptionScopes, optScope)
 			ptr = unsafe.Pointer(uintptr(ptr) - sizeOfOptionScope)
 		}
 
 		// Process option fields
-		for i := uint16(0); i < tmplRecs.Header.OptionLength/uint16(sizeOfTemplateRecord); i++ {
+		for i := uint16(0); i < hdr.OptionLength/uint16(sizeOfTemplateRecord); i++ {
 			opt := (*TemplateRecord)(ptr)
 			tmplRecs.Records = append(tmplRecs.Records, opt)
 			ptr = unsafe.Pointer(uintptr(ptr) - sizeOfTemplateRecord)
 		}
 
-		packet.OptionsTemplates = append(packet.OptionsTemplates, tmplRecs)
-		end = unsafe.Pointer(uintptr(end) - uintptr(tmplRecs.Header.OptionScopeLength) - uintptr(tmplRecs.Header.OptionLength) - sizeOfOptionsTemplateRecordHeader)
+		//packet.OptionsTemplates = append(packet.OptionsTemplates, tmplRecs)
+		packet.Templates = append(packet.Templates, tmplRecs)
+
+		end = unsafe.Pointer(uintptr(end) - uintptr(hdr.OptionScopeLength) - uintptr(hdr.OptionLength) - sizeOfOptionsTemplateRecordHeader)
 	}
 }
 

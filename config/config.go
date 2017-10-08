@@ -45,12 +45,14 @@ type Agent struct {
 	Name          *string `yaml:"name"`
 	IPAddress     *string `yaml:"ip_address"`
 	SNMPCommunity *string `yaml:"snmp_community"`
+	SampleRate    *uint64 `yaml:"sample_rate"`
 }
 
 var (
 	dfltAggregationPeriod    = int64(60)
 	dfltDefaultSNMPCommunity = "public"
 	dfltDebug                = 0
+	dfltSampleRate           = uint64(1)
 	dfltCompressionLevel     = 6
 	dfltDataDir              = "data"
 	dfltAnonymize            = false
@@ -195,12 +197,19 @@ func (cfg *Config) defaults() {
 			if agent.SNMPCommunity == nil {
 				cfg.Agents[key].SNMPCommunity = strPtr(*cfg.DefaultSNMPCommunity)
 			}
+			if agent.SampleRate == nil {
+				cfg.Agents[key].SampleRate = uint64Ptr(dfltSampleRate)
+			}
 		}
 	}
 }
 
 func bgpPtr(bgp BGPAugment) *BGPAugment {
 	return &bgp
+}
+
+func uint64Ptr(x uint64) *uint64 {
+	return &x
 }
 
 func srvPtr(srv Server) *Server {

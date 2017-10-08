@@ -21,6 +21,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/taktv6/tflow2/config"
+	"github.com/taktv6/tflow2/srcache"
+
 	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/netflow"
@@ -31,21 +34,23 @@ import (
 // fieldMap describes what information is at what index in the slice
 // that we get from decoding a netflow packet
 type fieldMap struct {
-	srcAddr  int
-	dstAddr  int
-	protocol int
-	packets  int
-	size     int
-	intIn    int
-	intOut   int
-	nextHop  int
-	family   int
-	vlan     int
-	ts       int
-	srcAsn   int
-	dstAsn   int
-	srcPort  int
-	dstPort  int
+	srcAddr                   int
+	dstAddr                   int
+	protocol                  int
+	packets                   int
+	size                      int
+	intIn                     int
+	intOut                    int
+	nextHop                   int
+	family                    int
+	vlan                      int
+	ts                        int
+	srcAsn                    int
+	dstAsn                    int
+	srcPort                   int
+	dstPort                   int
+	samplingInterval          int
+	flowSamplerRandomInterval int
 }
 
 // NetflowServer represents a Netflow Collector instance
@@ -67,15 +72,18 @@ type NetflowServer struct {
 	conn *net.UDPConn
 
 	wg sync.WaitGroup
+
+	sampleRateCache *srcache.SamplerateCache
 }
 
 // New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *NetflowServer {
+func New(listenAddr string, numReaders int, bgpAugment bool, debug int, agents []config.Agent) *NetflowServer {
 	nfs := &NetflowServer{
-		debug:      debug,
-		tmplCache:  newTemplateCache(),
-		Output:     make(chan *netflow.Flow),
-		bgpAugment: bgpAugment,
+		debug:           debug,
+		tmplCache:       newTemplateCache(),
+		Output:          make(chan *netflow.Flow),
+		bgpAugment:      bgpAugment,
+		sampleRateCache: srcache.New(agents),
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", listenAddr)
@@ -142,23 +150,6 @@ func (nfs *NetflowServer) processPacket(remote net.IP, buffer []byte) {
 		return
 	}
 
-	if packet.OptionsTemplates != nil {
-		fmt.Printf("Option Template found:\n")
-		for _, tmpl := range packet.OptionsTemplates {
-			for _, scope := range tmpl.OptionScopes {
-				fmt.Printf("Scope:\n")
-				fmt.Printf("Type: %d\n", scope.ScopeFieldType)
-				fmt.Printf("Length: %d\n", scope.ScopeFieldLength)
-			}
-
-			for _, rec := range tmpl.Records {
-				fmt.Printf("Option:\n")
-				fmt.Printf("Type: %d\n", rec.Type)
-				fmt.Printf("Length: %d\n", rec.Length)
-			}
-		}
-	}
-
 	nfs.updateTemplateCache(remote, packet)
 	nfs.processFlowSets(remote, packet.Header.SourceID, packet.DataFlowSets(), int64(packet.Header.UnixSecs), packet)
 }
@@ -178,7 +169,7 @@ func (nfs *NetflowServer) processFlowSets(remote net.IP, sourceID uint32, flowSe
 			continue
 		}
 
-		records := template.DecodeFlowSet(*set)
+		records := nf9.DecodeFlowSet(template.Records, *set)
 		if records == nil {
 			glog.Warning("Error decoding FlowSet")
 			continue
@@ -192,35 +183,88 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 	fm := generateFieldMap(template)
 
 	for _, r := range records {
-		switch fm.family {
-		case 4:
-			atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
-		case 6:
-			atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
-		default:
-			glog.Warning("Unknown address family")
+		if template.OptionScopes != nil {
+			if fm.samplingInterval >= 0 {
+				nfs.sampleRateCache.Set(agent, uint64(convert.Uint32(r.Values[fm.samplingInterval])))
+			}
+
+			if fm.flowSamplerRandomInterval >= 0 {
+				nfs.sampleRateCache.Set(agent, uint64(convert.Uint32(r.Values[fm.flowSamplerRandomInterval])))
+			}
 			continue
+		}
+
+		if fm.family >= 0 {
+			switch fm.family {
+			case 4:
+				atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
+			case 6:
+				atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
+			default:
+				glog.Warning("Unknown address family")
+				continue
+			}
 		}
 
 		var fl netflow.Flow
 		fl.Router = agent
 		fl.Timestamp = ts
-		fl.Family = uint32(fm.family)
-		fl.Packets = convert.Uint32(r.Values[fm.packets])
-		fl.Size = uint64(convert.Uint32(r.Values[fm.size]))
-		fl.Protocol = convert.Uint32(r.Values[fm.protocol])
-		fl.IntIn = convert.Uint32(r.Values[fm.intIn])
-		fl.IntOut = convert.Uint32(r.Values[fm.intOut])
-		fl.SrcPort = convert.Uint32(r.Values[fm.srcPort])
-		fl.DstPort = convert.Uint32(r.Values[fm.dstPort])
-		fl.SrcAddr = convert.Reverse(r.Values[fm.srcAddr])
-		fl.DstAddr = convert.Reverse(r.Values[fm.dstAddr])
-		fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
+
+		if fm.family >= 0 {
+			fl.Family = uint32(fm.family)
+		}
+
+		if fm.packets >= 0 {
+			fl.Packets = convert.Uint32(r.Values[fm.packets])
+		}
+
+		if fm.size >= 0 {
+			fl.Size = uint64(convert.Uint32(r.Values[fm.size]))
+		}
+
+		if fm.protocol >= 0 {
+			fl.Protocol = convert.Uint32(r.Values[fm.protocol])
+		}
+
+		if fm.intIn >= 0 {
+			fl.IntIn = convert.Uint32(r.Values[fm.intIn])
+		}
+
+		if fm.intOut >= 0 {
+			fl.IntOut = convert.Uint32(r.Values[fm.intOut])
+		}
+
+		if fm.srcPort >= 0 {
+			fl.SrcPort = convert.Uint32(r.Values[fm.srcPort])
+		}
+
+		if fm.dstPort >= 0 {
+			fl.DstPort = convert.Uint32(r.Values[fm.dstPort])
+		}
+
+		if fm.srcAddr >= 0 {
+			fl.SrcAddr = convert.Reverse(r.Values[fm.srcAddr])
+		}
+
+		if fm.dstAddr >= 0 {
+			fl.DstAddr = convert.Reverse(r.Values[fm.dstAddr])
+		}
+
+		if fm.nextHop >= 0 {
+			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
+		}
 
 		if !nfs.bgpAugment {
-			fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
-			fl.DstAs = convert.Uint32(r.Values[fm.dstAsn])
+			if fm.srcAsn >= 0 {
+				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
+			}
+
+			if fm.dstAsn >= 0 {
+				fl.DstAs = convert.Uint32(r.Values[fm.dstAsn])
+			}
 		}
+
+		fl.Samplerate = nfs.sampleRateCache.Get(agent)
 
 		if nfs.debug > 2 {
 			Dump(&fl)
@@ -258,7 +302,26 @@ func DumpTemplate(tmpl *nf9.TemplateRecords) {
 // generateFieldMap processes a TemplateRecord and populates a fieldMap accordingly
 // the FieldMap can then be used to read fields from a flow
 func generateFieldMap(template *nf9.TemplateRecords) *fieldMap {
-	var fm fieldMap
+	fm := fieldMap{
+		srcAddr:                   -1,
+		dstAddr:                   -1,
+		protocol:                  -1,
+		packets:                   -1,
+		size:                      -1,
+		intIn:                     -1,
+		intOut:                    -1,
+		nextHop:                   -1,
+		family:                    -1,
+		vlan:                      -1,
+		ts:                        -1,
+		srcAsn:                    -1,
+		dstAsn:                    -1,
+		srcPort:                   -1,
+		dstPort:                   -1,
+		samplingInterval:          -1,
+		flowSamplerRandomInterval: -1,
+	}
+
 	i := -1
 	for _, f := range template.Records {
 		i++
@@ -296,6 +359,10 @@ func generateFieldMap(template *nf9.TemplateRecords) *fieldMap {
 			fm.srcAsn = i
 		case nf9.DstAs:
 			fm.dstAsn = i
+		case nf9.SamplingInterval:
+			fm.samplingInterval = i
+		case nf9.FlowSamplerRandomInterval:
+			fm.flowSamplerRandomInterval = i
 		}
 	}
 	return &fm

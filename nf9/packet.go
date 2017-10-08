@@ -199,10 +199,6 @@ type Packet struct {
 	// representing a template found in this packet.
 	Templates []*TemplateRecords
 
-	// A slice of pointers to OptionsTemplates. Each element is instance of OptionsTemplates
-	// representing a option found in this packet.
-	OptionsTemplates []*OptionsTemplateRecords
-
 	// Buffer is a slice pointing to the original byte array that this packet was decoded from.
 	// This field is only populated if debug level is at least 2
 	Buffer []byte
@@ -214,12 +210,6 @@ var sizeOfHeader = unsafe.Sizeof(Header{})
 // Template Records can be used to decode Data FlowSets to Data Records.
 func (p *Packet) GetTemplateRecords() []*TemplateRecords {
 	return p.Templates
-}
-
-// GetOptionsTemplateRecords returns a list of all Option Template Records in the packet.
-// Option Template Records can be used to decode Option Data FlowSets to Data Records.
-func (p *Packet) GetOptionsTemplateRecords() []*OptionsTemplateRecords {
-	return p.OptionsTemplates
 }
 
 // DataFlowSets generate a list of all Data FlowSets in the packet. If matched

@@ -31,3 +31,4 @@ agents:
   - name: "bb01.fra01"
     ip_address: "127.0.0.1"
     snmp_community: "public"
+    samplerate: 1000

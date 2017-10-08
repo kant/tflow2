@@ -22,7 +22,6 @@ var (
 	sizeOfTemplateRecordHeader        = unsafe.Sizeof(TemplateRecordHeader{})
 	sizeOfOptionsTemplateRecordHeader = unsafe.Sizeof(OptionsTemplateRecordHeader{})
 	sizeOfOptionScope                 = unsafe.Sizeof(OptionScope{})
-	sizeOfOptionsTemplateRecords      = unsafe.Sizeof(OptionsTemplateRecords{})
 )
 
 // TemplateRecordHeader represents the header of a template record
@@ -64,22 +63,10 @@ type OptionsTemplateRecordHeader struct {
 type TemplateRecords struct {
 	Header *TemplateRecordHeader
 
-	// List of fields in this Template Record.
-	Records []*TemplateRecord
-
-	Packet *Packet
-
-	Values [][]byte
-}
-
-// OptionsTemplateRecords is a single options template that describtes an options Flow Record
-type OptionsTemplateRecords struct {
-	Header *OptionsTemplateRecordHeader
-
 	// List of scopes
 	OptionScopes []*OptionScope
 
-	// List of fields
+	// List of fields in this Template Record.
 	Records []*TemplateRecord
 
 	Packet *Packet
@@ -121,7 +108,7 @@ var sizeOfTemplateRecord = unsafe.Sizeof(TemplateRecord{})
 
 // DecodeFlowSet uses current TemplateRecord to decode data in Data FlowSet to
 // a list of Flow Data Records.
-func (dtpl *TemplateRecords) DecodeFlowSet(set FlowSet) (list []FlowDataRecord) {
+/*func (dtpl *TemplateRecords) DecodeFlowSet(set FlowSet) (list []FlowDataRecord) {
 	if set.Header.FlowSetID != dtpl.Header.TemplateID {
 		return nil
 	}
@@ -138,6 +125,32 @@ func (dtpl *TemplateRecords) DecodeFlowSet(set FlowSet) (list []FlowDataRecord) 
 
 	for n >= 4 {
 		record.Values, count = parseFieldValues(set.Flows[0:n], dtpl.Records)
+		if record.Values == nil {
+			return
+		}
+		list = append(list, record)
+		n = n - count
+	}
+
+	return
+}*/
+
+// DecodeFlowSet uses current TemplateRecord to decode data in Data FlowSet to
+// a list of Flow Data Records.
+func DecodeFlowSet(templateRecords []*TemplateRecord, set FlowSet) (list []FlowDataRecord) {
+	var record FlowDataRecord
+
+	// Pre-allocate some room for flows
+	list = make([]FlowDataRecord, 0, numPreAllocFlowDataRecs)
+
+	// Assume total record length must be >= 4, otherwise it is impossible
+	// to distinguish between padding and new record. Padding MUST be
+	// supported.
+	n := len(set.Flows)
+	count := 0
+
+	for n >= 4 {
+		record.Values, count = parseFieldValues(set.Flows[0:n], templateRecords)
 		if record.Values == nil {
 			return
 		}

@@ -62,7 +62,7 @@ func main() {
 
 	// Netflow v9 Server
 	if *cfg.NetflowV9.Enabled {
-		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents)
 		chans = append(chans, nfs.Output)
 	}
 
