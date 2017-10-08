@@ -18,6 +18,13 @@ const (
 	numPreAllocFlowDataRecs = 20
 )
 
+var (
+	sizeOfTemplateRecordHeader        = unsafe.Sizeof(TemplateRecordHeader{})
+	sizeOfOptionsTemplateRecordHeader = unsafe.Sizeof(OptionsTemplateRecordHeader{})
+	sizeOfOptionScope                 = unsafe.Sizeof(OptionScope{})
+	sizeOfOptionsTemplateRecords      = unsafe.Sizeof(OptionsTemplateRecords{})
+)
+
 // TemplateRecordHeader represents the header of a template record
 type TemplateRecordHeader struct {
 	// Number of fields in this Template Record. Because a Template FlowSet
@@ -33,7 +40,24 @@ type TemplateRecordHeader struct {
 	TemplateID uint16
 }
 
-var sizeOfTemplateRecordHeader = unsafe.Sizeof(TemplateRecordHeader{})
+// OptionsTemplateRecordHeader represents the header of an option template record
+type OptionsTemplateRecordHeader struct {
+	// The length (in bytes) of any options field definitions
+	// contained in this Options Template Record.
+	OptionLength uint16
+
+	// Number of fields in this Template Record. Because a Template FlowSet
+	// usually contains multiple Template Records, this field allows the
+	// Collector to determine the end of the current Template Record and
+	// the start of the next.
+	OptionScopeLength uint16
+
+	// Each of the newly generated Template Records is given a unique
+	// Template ID. This uniqueness is local to the Observation Domain that
+	// generated the Template ID. Template IDs of Data FlowSets are numbered
+	// from 256 to 65535.
+	TemplateID uint16
+}
 
 // TemplateRecords is a single template that describes structure of a Flow Record
 // (actual Netflow data).
@@ -46,6 +70,33 @@ type TemplateRecords struct {
 	Packet *Packet
 
 	Values [][]byte
+}
+
+// OptionsTemplateRecords is a single options template that describtes an options Flow Record
+type OptionsTemplateRecords struct {
+	Header *OptionsTemplateRecordHeader
+
+	// List of scopes
+	OptionScopes []*OptionScope
+
+	// List of fields
+	Records []*TemplateRecord
+
+	Packet *Packet
+
+	Values [][]byte
+}
+
+// OptionScope represents an option scope in an options template flowset
+type OptionScope struct {
+	// The length (in bytes) of the Scope field, as it would appear in
+	//an Options Data Record.
+	ScopeFieldLength uint16
+
+	//A numeric value that represents the type of field that would
+	//appear in the Options Template Record.  Refer to the Field Type
+	//Definitions section.
+	ScopeFieldType uint16
 }
 
 //TemplateRecord represents a Template Record as described in RFC3954

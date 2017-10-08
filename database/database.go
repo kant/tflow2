@@ -56,12 +56,11 @@ type FlowDatabase struct {
 const anyIndex = uint8(0)
 
 // New creates a new FlowDatabase and returns a pointer to it
-func New(aggregation int64, maxAge int64, numAddWorker int, samplerate int, debug int, compLevel int, storage string, anonymize bool, intfMapper *intfmapper.Mapper, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
+func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel int, storage string, anonymize bool, intfMapper *intfmapper.Mapper, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
 	flowDB := &FlowDatabase{
 		maxAge:         maxAge,
 		aggregation:    aggregation,
 		compLevel:      compLevel,
-		samplerate:     samplerate,
 		Input:          make(chan *netflow.Flow),
 		lastDump:       time.Now().Unix(),
 		storage:        storage,

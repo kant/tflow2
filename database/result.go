@@ -13,7 +13,6 @@ type Result struct {
 	Timestamps  []interface{}          // sorted timestamps
 	Data        map[int64]BreakdownMap // timestamps -> keys -> values
 	Aggregation int64
-	SampleRate  int
 }
 
 // WriteCSV writes the result as CSV into the writer
@@ -44,7 +43,7 @@ func (res *Result) WriteCSV(writer io.Writer) {
 			if _, ok := buckets[k]; !ok {
 				line = append(line, "0")
 			} else {
-				line = append(line, fmt.Sprintf("%d", buckets[k]/uint64(res.Aggregation)*8*uint64(res.SampleRate)))
+				line = append(line, fmt.Sprintf("%d", buckets[k]/uint64(res.Aggregation)*8))
 			}
 		}
 

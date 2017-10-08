@@ -37,7 +37,6 @@ var (
 	channelBuffer = flag.Int("channelbuffer", 1024, "Size of buffer for channels")
 	dbAddWorkers  = flag.Int("dbaddworkers", 24, "Number of workers adding flows into database")
 	nAggr         = flag.Int("numaggr", 12, "Number of flow aggregator workers")
-	samplerate    = flag.Int("samplerate", 1, "Samplerate of routers")
 
 	configFile = flag.String("config", "config.yml", "tflow2 configuration file")
 )
@@ -87,7 +86,6 @@ func main() {
 		*cfg.AggregationPeriod,
 		*cfg.CacheTime,
 		*dbAddWorkers,
-		*samplerate,
 		*cfg.Debug,
 		*cfg.CompressionLevel,
 		*cfg.DataDir,

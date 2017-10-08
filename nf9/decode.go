@@ -30,6 +30,9 @@ const FlowSetIDTemplateMax = 255
 // TemplateFlowSetID is the FlowSetID reserved for template flow sets
 const TemplateFlowSetID = 0
 
+// OptionTemplateFlowSetID is the FlowSetID reserved for option template flow sets
+const OptionTemplateFlowSetID = 1
+
 // errorIncompatibleVersion prints an error message in case the detected version is not supported
 func errorIncompatibleVersion(version uint16) error {
 	return fmt.Errorf("NF9: Incompatible protocol version v%d, only v9 is supported", version)
@@ -77,6 +80,9 @@ func Decode(raw []byte, remote net.IP) (*Packet, error) {
 		if fls.Header.FlowSetID == TemplateFlowSetID {
 			// Template
 			decodeTemplate(&packet, ptr, uintptr(fls.Header.Length)-sizeOfFlowSetHeader, remote)
+		} else if fls.Header.FlowSetID == OptionTemplateFlowSetID {
+			// Option Template
+			decodeOption(&packet, ptr, uintptr(fls.Header.Length)-sizeOfFlowSetHeader, remote)
 		} else if fls.Header.FlowSetID > FlowSetIDTemplateMax {
 			// Actual data packet
 			decodeData(&packet, ptr, uintptr(fls.Header.Length)-sizeOfFlowSetHeader)
@@ -88,17 +94,36 @@ func Decode(raw []byte, remote net.IP) (*Packet, error) {
 	return &packet, nil
 }
 
-// decodeData decodes a flowSet from `packet`
-func decodeData(packet *Packet, headerPtr unsafe.Pointer, size uintptr) {
-	flsh := (*FlowSetHeader)(unsafe.Pointer(headerPtr))
-	data := unsafe.Pointer(uintptr(headerPtr) - uintptr(flsh.Length))
+// decodeOption decodes an option template from `packet`
+func decodeOption(packet *Packet, end unsafe.Pointer, size uintptr, remote net.IP) {
+	min := uintptr(end) - size
 
-	fls := &FlowSet{
-		Header: flsh,
-		Flows:  (*(*[1<<31 - 1]byte)(data))[sizeOfFlowSetHeader:flsh.Length],
+	for uintptr(end) > min {
+		headerPtr := unsafe.Pointer(uintptr(end) - sizeOfOptionsTemplateRecordHeader)
+
+		tmplRecs := &OptionsTemplateRecords{}
+		tmplRecs.Header = (*OptionsTemplateRecordHeader)(unsafe.Pointer(headerPtr))
+		tmplRecs.Packet = packet
+		tmplRecs.Records = make([]*TemplateRecord, 0, numPreAllocRecs)
+
+		ptr := headerPtr
+		// Process option scopes
+		for i := uint16(0); i < tmplRecs.Header.OptionScopeLength/uint16(sizeOfOptionScope); i++ {
+			optScope := (*OptionScope)(ptr)
+			tmplRecs.OptionScopes = append(tmplRecs.OptionScopes, optScope)
+			ptr = unsafe.Pointer(uintptr(ptr) - sizeOfOptionScope)
+		}
+
+		// Process option fields
+		for i := uint16(0); i < tmplRecs.Header.OptionLength/uint16(sizeOfTemplateRecord); i++ {
+			opt := (*TemplateRecord)(ptr)
+			tmplRecs.Records = append(tmplRecs.Records, opt)
+			ptr = unsafe.Pointer(uintptr(ptr) - sizeOfTemplateRecord)
+		}
+
+		packet.OptionsTemplates = append(packet.OptionsTemplates, tmplRecs)
+		end = unsafe.Pointer(uintptr(end) - uintptr(tmplRecs.Header.OptionScopeLength) - uintptr(tmplRecs.Header.OptionLength) - sizeOfOptionsTemplateRecordHeader)
 	}
-
-	packet.FlowSets = append(packet.FlowSets, fls)
 }
 
 // decodeTemplate decodes a template from `packet`
@@ -123,6 +148,19 @@ func decodeTemplate(packet *Packet, end unsafe.Pointer, size uintptr, remote net
 		packet.Templates = append(packet.Templates, tmplRecs)
 		end = unsafe.Pointer(uintptr(end) - uintptr(tmplRecs.Header.FieldCount)*sizeOfTemplateRecord - sizeOfTemplateRecordHeader)
 	}
+}
+
+// decodeData decodes a flowSet from `packet`
+func decodeData(packet *Packet, headerPtr unsafe.Pointer, size uintptr) {
+	flsh := (*FlowSetHeader)(unsafe.Pointer(headerPtr))
+	data := unsafe.Pointer(uintptr(headerPtr) - uintptr(flsh.Length))
+
+	fls := &FlowSet{
+		Header: flsh,
+		Flows:  (*(*[1<<31 - 1]byte)(data))[sizeOfFlowSetHeader:flsh.Length],
+	}
+
+	packet.FlowSets = append(packet.FlowSets, fls)
 }
 
 // PrintHeader prints the header of `packet`

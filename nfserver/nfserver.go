@@ -142,6 +142,23 @@ func (nfs *NetflowServer) processPacket(remote net.IP, buffer []byte) {
 		return
 	}
 
+	if packet.OptionsTemplates != nil {
+		fmt.Printf("Option Template found:\n")
+		for _, tmpl := range packet.OptionsTemplates {
+			for _, scope := range tmpl.OptionScopes {
+				fmt.Printf("Scope:\n")
+				fmt.Printf("Type: %d\n", scope.ScopeFieldType)
+				fmt.Printf("Length: %d\n", scope.ScopeFieldLength)
+			}
+
+			for _, rec := range tmpl.Records {
+				fmt.Printf("Option:\n")
+				fmt.Printf("Type: %d\n", rec.Type)
+				fmt.Printf("Length: %d\n", rec.Length)
+			}
+		}
+	}
+
 	nfs.updateTemplateCache(remote, packet)
 	nfs.processFlowSets(remote, packet.Header.SourceID, packet.DataFlowSets(), int64(packet.Header.UnixSecs), packet)
 }
@@ -291,6 +308,13 @@ func (nfs *NetflowServer) updateTemplateCache(remote net.IP, p *nf9.Packet) {
 		nfs.tmplCache.set(convert.Uint32(remote), tr.Packet.Header.SourceID, tr.Header.TemplateID, *tr)
 	}
 }
+
+/*func (nfs *NetflowServer) updateOptionsTemplateCache(remote net.IP, p *nf9.Packet) {
+	templRecs := p.GetOptionsTemplateRecords()
+	for _, tr := range templRecs {
+		nfs.tmplCache.set(convert.Uint32(remote), tr.Packet.Header.SourceID, tr.Header.TemplateID, *tr)
+	}
+}*/
 
 // makeTemplateKey creates a string of the 3 tuple router address, source id and template id
 func makeTemplateKey(addr string, sourceID uint32, templateID uint16, keyParts []string) string {

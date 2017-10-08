@@ -139,12 +139,13 @@ func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
 		}
 
 		fl := &netflow.Flow{
-			Router:    remote,
-			IntIn:     fs.FlowSampleHeader.InputIf,
-			IntOut:    fs.FlowSampleHeader.OutputIf,
-			Size:      uint64(fs.RawPacketHeader.FlowDataLength),
-			Packets:   uint32(1),
-			Timestamp: time.Now().Unix(),
+			Router:     remote,
+			IntIn:      fs.FlowSampleHeader.InputIf,
+			IntOut:     fs.FlowSampleHeader.OutputIf,
+			Size:       uint64(fs.RawPacketHeader.FlowDataLength),
+			Packets:    uint32(1),
+			Timestamp:  time.Now().Unix(),
+			Samplerate: uint64(fs.FlowSampleHeader.SamplingRate),
 		}
 
 		if fs.ExtendedRouterData != nil {
@@ -175,8 +176,6 @@ func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
 				if err := getUDP(udpPtr, len, fl); err != nil {
 					glog.Errorf("%v", err)
 				}
-				/*default:
-				glog.Errorf("Unknown IPv6 next header: %d\n", ipv4.Protocol)*/
 			}
 		} else if ether.EtherType == packet.EtherTypeIPv6 {
 			fl.Family = 6
@@ -202,8 +201,6 @@ func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
 				if err := getUDP(udpPtr, len, fl); err != nil {
 					glog.Errorf("%v", err)
 				}
-				/*default:
-				glog.Errorf("Unknown IPv6 next header: %d\n", ipv6.NextHeader)*/
 			}
 		} else if ether.EtherType == packet.EtherTypeARP {
 			// Ignore ARP

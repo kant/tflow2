@@ -413,7 +413,6 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 		TopKeys:     topKeys,
 		Timestamps:  tsTree.Dump(),
 		Data:        resTime,
-		SampleRate:  fdb.samplerate,
 		Aggregation: fdb.aggregation,
 	}, nil
 }

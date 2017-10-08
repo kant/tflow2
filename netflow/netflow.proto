@@ -65,6 +65,9 @@ message Flow {
 
   //DST port
   uint32 dst_port = 18;
+
+  //Samplerate
+  uint64 samplerate = 19;
 }
 
 // Intf groups an interfaces ID and name
