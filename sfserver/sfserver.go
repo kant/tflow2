@@ -116,7 +116,7 @@ func (sfs *SflowServer) packetWorker(identity int, conn *net.UDPConn) {
 // processPacket takes a raw sflow packet, send it to the decoder and passes the decoded packet
 func (sfs *SflowServer) processPacket(agent net.IP, buffer []byte) {
 	length := len(buffer)
-	p, err := sflow.Decode(buffer[:length], remote)
+	p, err := sflow.Decode(buffer[:length], agent)
 	if err != nil {
 		glog.Errorf("sflow.Decode: %v", err)
 		return

@@ -45,8 +45,8 @@ func Init() {
 	GlobalStats.StartTime = time.Now().Unix()
 }
 
-// Varz is used to serve HTTP requests /varz and send the statistics to a client in borgmon/prometheus compatible format
-func Varz(w http.ResponseWriter) {
+// Metrics is used to serve HTTP requests /metrics and send the statistics to a client in borgmon/prometheus compatible format
+func Metrics(w http.ResponseWriter) {
 	now := time.Now().Unix()
 	fmt.Fprintf(w, "netflow_collector_uptime %d\n", now-GlobalStats.StartTime)
 	fmt.Fprintf(w, "netflow_collector_flows4 %d\n", atomic.LoadUint64(&GlobalStats.Flows4))
@@ -62,7 +62,7 @@ func Varz(w http.ResponseWriter) {
 	fmt.Fprintf(w, "netflow_collector_ipfix_bytes %d\n", atomic.LoadUint64(&GlobalStats.IPFIXbytes))
 	fmt.Fprintf(w, "netflow_collector_sflow_packets %d\n", atomic.LoadUint64(&GlobalStats.SflowPackets))
 	fmt.Fprintf(w, "netflow_collector_sflow_bytes %d\n", atomic.LoadUint64(&GlobalStats.SflowBytes))
-
+	routerStats(w)
 }
 
 func routerStats(w http.ResponseWriter) {

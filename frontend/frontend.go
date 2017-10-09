@@ -33,22 +33,22 @@ type Frontend struct {
 	protocols  map[string]string
 	indexHTML  string
 	flowDB     *database.FlowDatabase
-	agents     []config.Agent
 	intfMapper *intfmapper.Mapper
 	iana       *iana.IANA
+	config     *config.Config
 }
 
 // New creates a new `Frontend`
-func New(addr string, protoNumsFilename string, fdb *database.FlowDatabase, agents []config.Agent, intfMapper *intfmapper.Mapper, iana *iana.IANA) *Frontend {
+func New(fdb *database.FlowDatabase, intfMapper *intfmapper.Mapper, iana *iana.IANA, config *config.Config) *Frontend {
 	fe := &Frontend{
 		flowDB:     fdb,
-		agents:     agents,
 		intfMapper: intfMapper,
 		iana:       iana,
+		config:     config,
 	}
 	fe.populateIndexHTML()
 	http.HandleFunc("/", fe.httpHandler)
-	go http.ListenAndServe(addr, nil)
+	go http.ListenAndServe(*fe.config.Frontend.Listen, nil)
 	return fe
 }
 
@@ -76,7 +76,7 @@ func (fe *Frontend) agentsHandler(w http.ResponseWriter, r *http.Request) {
 		Agents: make([]routerJSON, 0),
 	}
 
-	for _, agent := range fe.agents {
+	for _, agent := range fe.config.Agents {
 		a := routerJSON{
 			Name:       *agent.Name,
 			Interfaces: make([]string, 0),
@@ -109,7 +109,7 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 	case "/query":
 		fe.queryHandler(w, r)
 	case "/metrics":
-		stats.Varz(w)
+		stats.Metrics(w)
 	case "/protocols":
 		fe.getProtocols(w, r)
 	case "/promquery":

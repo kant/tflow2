@@ -61,6 +61,7 @@ func main() {
 
 	chans := make([]chan *netflow.Flow, 0)
 
+	// Sample Rate Cache
 	srcache := srcache.New(cfg.Agents)
 
 	// Netflow v9 Server
@@ -113,12 +114,10 @@ func main() {
 	// Frontend
 	if *cfg.Frontend.Enabled {
 		frontend.New(
-			*cfg.Frontend.Listen,
-			*protoNums,
 			flowDB,
-			cfg.Agents,
 			inftMapper,
 			iana,
+			cfg,
 		)
 	}
 
