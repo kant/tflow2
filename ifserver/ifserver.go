@@ -72,16 +72,19 @@ type IPFIXServer struct {
 	wg sync.WaitGroup
 
 	sampleRateCache *srcache.SamplerateCache
+
+	config *config.Config
 }
 
 // New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int, agents []config.Agent) *IPFIXServer {
+func New(listenAddr string, numReaders int, bgpAugment bool, debug int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *IPFIXServer {
 	ifs := &IPFIXServer{
 		debug:           debug,
 		tmplCache:       newTemplateCache(),
 		Output:          make(chan *netflow.Flow),
 		bgpAugment:      bgpAugment,
-		sampleRateCache: srcache.New(agents),
+		sampleRateCache: sampleRateCache,
+		config:          config,
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", listenAddr)
@@ -111,6 +114,14 @@ func (ifs *IPFIXServer) Close() {
 	ifs.wg.Wait()
 }
 
+// validateSource checks if src is a configured agent
+func (ifs *IPFIXServer) validateSource(src net.IP) bool {
+	if _, ok := ifs.config.AgentsNameByIP[src.String()]; ok {
+		return true
+	}
+	return false
+}
+
 // packetWorker reads netflow packet from socket and handsoff processing to processFlowSets()
 func (ifs *IPFIXServer) packetWorker(identity int, conn *net.UDPConn) {
 	buffer := make([]byte, 8960)
@@ -126,10 +137,8 @@ func (ifs *IPFIXServer) packetWorker(identity int, conn *net.UDPConn) {
 		atomic.AddUint64(&stats.GlobalStats.IPFIXpackets, 1)
 		atomic.AddUint64(&stats.GlobalStats.IPFIXbytes, uint64(length))
 
-		remote.IP = remote.IP.To4()
-		if remote.IP == nil {
-			glog.Errorf("Received IPv6 packet. Dropped.")
-			continue
+		if !ifs.validateSource(remote.IP) {
+			glog.Errorf("Unknown source: %s", remote.IP.String())
 		}
 
 		ifs.processPacket(remote.IP, buffer[:length])

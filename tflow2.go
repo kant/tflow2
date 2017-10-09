@@ -28,6 +28,7 @@ import (
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/nfserver"
 	"github.com/taktv6/tflow2/sfserver"
+	"github.com/taktv6/tflow2/srcache"
 	"github.com/taktv6/tflow2/stats"
 )
 
@@ -60,15 +61,17 @@ func main() {
 
 	chans := make([]chan *netflow.Flow, 0)
 
+	srcache := srcache.New(cfg.Agents)
+
 	// Netflow v9 Server
 	if *cfg.NetflowV9.Enabled {
-		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents)
+		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents, srcache)
 		chans = append(chans, nfs.Output)
 	}
 
 	// IPFIX Server
 	if *cfg.IPFIX.Enabled {
-		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents)
+		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents, srcache)
 		chans = append(chans, ifs.Output)
 	}
 

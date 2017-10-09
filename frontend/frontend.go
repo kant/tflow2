@@ -108,11 +108,11 @@ func (fe *Frontend) httpHandler(w http.ResponseWriter, r *http.Request) {
 		fe.indexHandler(w, r)
 	case "/query":
 		fe.queryHandler(w, r)
-	case "/varz":
+	case "/metrics":
 		stats.Varz(w)
 	case "/protocols":
 		fe.getProtocols(w, r)
-	case "/metrics":
+	case "/promquery":
 		fe.prometheusHandler(w, r)
 	case "/agents":
 		fe.agentsHandler(w, r)

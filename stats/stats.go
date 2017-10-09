@@ -62,4 +62,9 @@ func Varz(w http.ResponseWriter) {
 	fmt.Fprintf(w, "netflow_collector_ipfix_bytes %d\n", atomic.LoadUint64(&GlobalStats.IPFIXbytes))
 	fmt.Fprintf(w, "netflow_collector_sflow_packets %d\n", atomic.LoadUint64(&GlobalStats.SflowPackets))
 	fmt.Fprintf(w, "netflow_collector_sflow_bytes %d\n", atomic.LoadUint64(&GlobalStats.SflowBytes))
+
+}
+
+func routerStats(w http.ResponseWriter) {
+
 }

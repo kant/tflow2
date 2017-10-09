@@ -74,16 +74,19 @@ type NetflowServer struct {
 	wg sync.WaitGroup
 
 	sampleRateCache *srcache.SamplerateCache
+
+	config *config.Config
 }
 
 // New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int, agents []config.Agent) *NetflowServer {
+func New(listenAddr string, numReaders int, bgpAugment bool, debug int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *NetflowServer {
 	nfs := &NetflowServer{
 		debug:           debug,
 		tmplCache:       newTemplateCache(),
 		Output:          make(chan *netflow.Flow),
 		bgpAugment:      bgpAugment,
-		sampleRateCache: srcache.New(agents),
+		sampleRateCache: sampleRateCache,
+		config:          config,
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", listenAddr)
@@ -114,6 +117,14 @@ func (nfs *NetflowServer) Close() {
 	nfs.wg.Wait()
 }
 
+// validateSource checks if src is a configured agent
+func (nfs *NetflowServer) validateSource(src net.IP) bool {
+	if _, ok := nfs.config.AgentsNameByIP[src.String()]; ok {
+		return true
+	}
+	return false
+}
+
 // packetWorker reads netflow packet from socket and handsoff processing to processFlowSets()
 func (nfs *NetflowServer) packetWorker(identity int) {
 	buffer := make([]byte, 8960)
@@ -129,10 +140,8 @@ func (nfs *NetflowServer) packetWorker(identity int) {
 		atomic.AddUint64(&stats.GlobalStats.Netflow9packets, 1)
 		atomic.AddUint64(&stats.GlobalStats.Netflow9bytes, uint64(length))
 
-		remote.IP = remote.IP.To4()
-		if remote.IP == nil {
-			glog.Errorf("Received IPv6 packet. Dropped.")
-			continue
+		if !nfs.validateSource(remote.IP) {
+			glog.Errorf("Unknown source: %s", remote.IP.String())
 		}
 
 		nfs.processPacket(remote.IP, buffer[:length])
