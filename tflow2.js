@@ -219,7 +219,8 @@ function submitQuery() {
         }
         
         if (this.id.match(/^Timestamp/)){
-            value = Math.round(new Date(value).getTime() / 1000)
+            value = Math.round(new Date(value).getTime() / 1000);
+            alert(value);
         }
         query[field] = value + ""
     })

@@ -87,6 +87,6 @@ func (tg *TimeGroup) filterAndBreakdown(resSum *concurrentResSum, q *Query, iana
 
 	// Breakdown
 	resTime := make(BreakdownMap)
-	res.Each(breakdown, iana, intfMap, q.Breakdown, resSum, resTime)
+	res.Each(breakdown, intfMap, iana, q.Breakdown, resSum, resTime)
 	return resTime
 }
