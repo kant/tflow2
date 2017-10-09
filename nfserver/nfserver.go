@@ -62,12 +62,6 @@ type NetflowServer struct {
 	// receiver is the channel used to receive flows from the annotator layer
 	Output chan *netflow.Flow
 
-	// debug defines the debug level
-	debug int
-
-	// bgpAugment is used to decide if ASN information from netflow packets should be used
-	bgpAugment bool
-
 	// con is the UDP socket
 	conn *net.UDPConn
 
@@ -79,17 +73,15 @@ type NetflowServer struct {
 }
 
 // New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *NetflowServer {
+func New(numReaders int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *NetflowServer {
 	nfs := &NetflowServer{
-		debug:           debug,
 		tmplCache:       newTemplateCache(),
 		Output:          make(chan *netflow.Flow),
-		bgpAugment:      bgpAugment,
 		sampleRateCache: sampleRateCache,
 		config:          config,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", listenAddr)
+	addr, err := net.ResolveUDPAddr("udp", *nfs.config.NetflowV9.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
@@ -172,7 +164,7 @@ func (nfs *NetflowServer) processFlowSets(remote net.IP, sourceID uint32, flowSe
 
 		if template == nil {
 			templateKey := makeTemplateKey(addr, sourceID, set.Header.FlowSetID, keyParts)
-			if nfs.debug > 0 {
+			if *nfs.config.Debug > 0 {
 				glog.Warningf("Template for given FlowSet not found: %s", templateKey)
 			}
 			continue
@@ -263,7 +255,7 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
 		}
 
-		if !nfs.bgpAugment {
+		if !*nfs.config.BGPAugmentation.Enabled {
 			if fm.srcAsn >= 0 {
 				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
 			}
@@ -275,7 +267,7 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 
 		fl.Samplerate = nfs.sampleRateCache.Get(agent)
 
-		if nfs.debug > 2 {
+		if *nfs.config.Debug > 2 {
 			Dump(&fl)
 		}
 

@@ -65,19 +65,19 @@ func main() {
 
 	// Netflow v9 Server
 	if *cfg.NetflowV9.Enabled {
-		nfs := nfserver.New(*cfg.NetflowV9.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents, srcache)
+		nfs := nfserver.New(*sockReaders, cfg, srcache)
 		chans = append(chans, nfs.Output)
 	}
 
 	// IPFIX Server
 	if *cfg.IPFIX.Enabled {
-		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents, srcache)
+		ifs := ifserver.New(*sockReaders, cfg, srcache)
 		chans = append(chans, ifs.Output)
 	}
 
 	// sFlow Server
 	if *cfg.Sflow.Enabled {
-		sfs := sfserver.New(*cfg.Sflow.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		sfs := sfserver.New(*sockReaders, cfg, srcache)
 		chans = append(chans, sfs.Output)
 	}
 

@@ -60,12 +60,6 @@ type IPFIXServer struct {
 	// receiver is the channel used to receive flows from the annotator layer
 	Output chan *netflow.Flow
 
-	// debug defines the debug level
-	debug int
-
-	// bgpAugment is used to decide if ASN information from netflow packets should be used
-	bgpAugment bool
-
 	// con is the UDP socket
 	conn *net.UDPConn
 
@@ -76,18 +70,16 @@ type IPFIXServer struct {
 	config *config.Config
 }
 
-// New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *IPFIXServer {
+// New creates and starts a new `IPFIXServer` instance
+func New(numReaders int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *IPFIXServer {
 	ifs := &IPFIXServer{
-		debug:           debug,
 		tmplCache:       newTemplateCache(),
 		Output:          make(chan *netflow.Flow),
-		bgpAugment:      bgpAugment,
 		sampleRateCache: sampleRateCache,
 		config:          config,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", listenAddr)
+	addr, err := net.ResolveUDPAddr("udp", *ifs.config.IPFIX.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
@@ -169,7 +161,7 @@ func (ifs *IPFIXServer) processFlowSets(remote net.IP, domainID uint32, flowSets
 
 		if template == nil {
 			templateKey := makeTemplateKey(addr, domainID, set.Header.SetID, keyParts)
-			if ifs.debug > 0 {
+			if *ifs.config.Debug > 0 {
 				glog.Warningf("Template for given FlowSet not found: %s", templateKey)
 			}
 			continue
@@ -255,7 +247,7 @@ func (ifs *IPFIXServer) processFlowSet(template *ipfix.TemplateRecords, records 
 			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
 		}
 
-		if !ifs.bgpAugment {
+		if !*ifs.config.BGPAugmentation.Enabled {
 			if fm.srcAsn >= 0 {
 				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
 			}
@@ -267,7 +259,7 @@ func (ifs *IPFIXServer) processFlowSet(template *ipfix.TemplateRecords, records 
 
 		fl.Samplerate = ifs.sampleRateCache.Get(agent)
 
-		if ifs.debug > 2 {
+		if *ifs.config.Debug > 2 {
 			Dump(&fl)
 		}
 

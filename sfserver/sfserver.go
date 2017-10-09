@@ -22,10 +22,12 @@ import (
 	"unsafe"
 
 	"github.com/golang/glog"
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/packet"
 	"github.com/taktv6/tflow2/sflow"
+	"github.com/taktv6/tflow2/srcache"
 	"github.com/taktv6/tflow2/stats"
 )
 
@@ -44,17 +46,21 @@ type SflowServer struct {
 	conn *net.UDPConn
 
 	wg sync.WaitGroup
+
+	config *config.Config
+
+	sampleRateCache *srcache.SamplerateCache
 }
 
 // New creates and starts a new `SflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *SflowServer {
-	ifs := &SflowServer{
-		debug:      debug,
-		Output:     make(chan *netflow.Flow),
-		bgpAugment: bgpAugment,
+func New(numReaders int, config *config.Config, sampleRateCache *srcache.SamplerateCache) *SflowServer {
+	sfs := &SflowServer{
+		Output:          make(chan *netflow.Flow),
+		config:          config,
+		sampleRateCache: sampleRateCache,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", listenAddr)
+	addr, err := net.ResolveUDPAddr("udp", *sfs.config.Sflow.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
@@ -66,13 +72,13 @@ func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *SflowSe
 
 	// Create goroutines that read netflow packet and process it
 	for i := 0; i < numReaders; i++ {
-		ifs.wg.Add(numReaders)
+		sfs.wg.Add(numReaders)
 		go func(num int) {
-			ifs.packetWorker(num, con)
+			sfs.packetWorker(num, con)
 		}(i)
 	}
 
-	return ifs
+	return sfs
 }
 
 // Close closes the socket and stops the workers
@@ -108,7 +114,7 @@ func (sfs *SflowServer) packetWorker(identity int, conn *net.UDPConn) {
 }
 
 // processPacket takes a raw sflow packet, send it to the decoder and passes the decoded packet
-func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
+func (sfs *SflowServer) processPacket(agent net.IP, buffer []byte) {
 	length := len(buffer)
 	p, err := sflow.Decode(buffer[:length], remote)
 	if err != nil {
@@ -139,7 +145,7 @@ func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
 		}
 
 		fl := &netflow.Flow{
-			Router:     remote,
+			Router:     agent,
 			IntIn:      fs.FlowSampleHeader.InputIf,
 			IntOut:     fs.FlowSampleHeader.OutputIf,
 			Size:       uint64(fs.RawPacketHeader.FlowDataLength),
@@ -147,6 +153,9 @@ func (sfs *SflowServer) processPacket(remote net.IP, buffer []byte) {
 			Timestamp:  time.Now().Unix(),
 			Samplerate: uint64(fs.FlowSampleHeader.SamplingRate),
 		}
+
+		// We're updating the sampleCache to allow the forntend to show current sampling rates
+		sfs.sampleRateCache.Set(agent, uint64(fs.FlowSampleHeader.SamplingRate))
 
 		if fs.ExtendedRouterData != nil {
 			fl.NextHop = fs.ExtendedRouterData.NextHop
