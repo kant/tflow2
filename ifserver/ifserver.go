@@ -22,30 +22,33 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/glog"
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/ipfix"
 	"github.com/taktv6/tflow2/netflow"
+	"github.com/taktv6/tflow2/srcache"
 	"github.com/taktv6/tflow2/stats"
 )
 
 // fieldMap describes what information is at what index in the slice
 // that we get from decoding a netflow packet
 type fieldMap struct {
-	srcAddr  int
-	dstAddr  int
-	protocol int
-	packets  int
-	size     int
-	intIn    int
-	intOut   int
-	nextHop  int
-	family   int
-	vlan     int
-	ts       int
-	srcAsn   int
-	dstAsn   int
-	srcPort  int
-	dstPort  int
+	srcAddr                int
+	dstAddr                int
+	protocol               int
+	packets                int
+	size                   int
+	intIn                  int
+	intOut                 int
+	nextHop                int
+	family                 int
+	vlan                   int
+	ts                     int
+	srcAsn                 int
+	dstAsn                 int
+	srcPort                int
+	dstPort                int
+	samplingPacketInterval int
 }
 
 // IPFIXServer represents a Netflow Collector instance
@@ -67,15 +70,18 @@ type IPFIXServer struct {
 	conn *net.UDPConn
 
 	wg sync.WaitGroup
+
+	sampleRateCache *srcache.SamplerateCache
 }
 
 // New creates and starts a new `NetflowServer` instance
-func New(listenAddr string, numReaders int, bgpAugment bool, debug int) *IPFIXServer {
+func New(listenAddr string, numReaders int, bgpAugment bool, debug int, agents []config.Agent) *IPFIXServer {
 	ifs := &IPFIXServer{
-		debug:      debug,
-		tmplCache:  newTemplateCache(),
-		Output:     make(chan *netflow.Flow),
-		bgpAugment: bgpAugment,
+		debug:           debug,
+		tmplCache:       newTemplateCache(),
+		Output:          make(chan *netflow.Flow),
+		bgpAugment:      bgpAugment,
+		sampleRateCache: srcache.New(agents),
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", listenAddr)
@@ -174,34 +180,83 @@ func (ifs *IPFIXServer) processFlowSet(template *ipfix.TemplateRecords, records 
 	fm := generateFieldMap(template)
 
 	for _, r := range records {
-		if fm.family == 4 {
-			atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
-		} else if fm.family == 6 {
-			atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
-		} else {
-			glog.Warning("Unknown address family")
+		/*if template.OptionScopes != nil {
+			if fm.samplingPacketInterval >= 0 {
+				ifs.sampleRateCache.Set(agent, uint64(convert.Uint32(r.Values[fm.samplingPacketInterval])))
+			}
 			continue
+		}*/
+
+		if fm.family >= 0 {
+			if fm.family == 4 {
+				atomic.AddUint64(&stats.GlobalStats.Flows4, 1)
+			} else if fm.family == 6 {
+				atomic.AddUint64(&stats.GlobalStats.Flows6, 1)
+			} else {
+				glog.Warning("Unknown address family")
+				continue
+			}
 		}
 
 		var fl netflow.Flow
 		fl.Router = agent
 		fl.Timestamp = ts
-		fl.Family = uint32(fm.family)
-		fl.Packets = convert.Uint32(r.Values[fm.packets])
-		fl.Size = uint64(convert.Uint32(r.Values[fm.size]))
-		fl.Protocol = convert.Uint32(r.Values[fm.protocol])
-		fl.IntIn = convert.Uint32(r.Values[fm.intIn])
-		fl.IntOut = convert.Uint32(r.Values[fm.intOut])
-		fl.SrcPort = convert.Uint32(r.Values[fm.srcPort])
-		fl.DstPort = convert.Uint32(r.Values[fm.dstPort])
-		fl.SrcAddr = convert.Reverse(r.Values[fm.srcAddr])
-		fl.DstAddr = convert.Reverse(r.Values[fm.dstAddr])
-		fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
+
+		if fm.family >= 0 {
+			fl.Family = uint32(fm.family)
+		}
+
+		if fm.packets >= 0 {
+			fl.Packets = convert.Uint32(r.Values[fm.packets])
+		}
+
+		if fm.size >= 0 {
+			fl.Size = uint64(convert.Uint32(r.Values[fm.size]))
+		}
+
+		if fm.protocol >= 0 {
+			fl.Protocol = convert.Uint32(r.Values[fm.protocol])
+		}
+
+		if fm.intIn >= 0 {
+			fl.IntIn = convert.Uint32(r.Values[fm.intIn])
+		}
+
+		if fm.intOut >= 0 {
+			fl.IntOut = convert.Uint32(r.Values[fm.intOut])
+		}
+
+		if fm.srcPort >= 0 {
+			fl.SrcPort = convert.Uint32(r.Values[fm.srcPort])
+		}
+
+		if fm.dstPort >= 0 {
+			fl.DstPort = convert.Uint32(r.Values[fm.dstPort])
+		}
+
+		if fm.srcAddr >= 0 {
+			fl.SrcAddr = convert.Reverse(r.Values[fm.srcAddr])
+		}
+
+		if fm.dstAddr >= 0 {
+			fl.DstAddr = convert.Reverse(r.Values[fm.dstAddr])
+		}
+
+		if fm.nextHop >= 0 {
+			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
+		}
 
 		if !ifs.bgpAugment {
-			fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
-			fl.DstAs = convert.Uint32(r.Values[fm.dstAsn])
+			if fm.srcAsn >= 0 {
+				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
+			}
+
+			if fm.dstAsn >= 0 {
+				fl.DstAs = convert.Uint32(r.Values[fm.dstAsn])
+			}
 		}
+
+		fl.Samplerate = ifs.sampleRateCache.Get(agent)
 
 		if ifs.debug > 2 {
 			Dump(&fl)
@@ -239,7 +294,25 @@ func DumpTemplate(tmpl *ipfix.TemplateRecords) {
 // generateFieldMap processes a TemplateRecord and populates a fieldMap accordingly
 // the FieldMap can then be used to read fields from a flow
 func generateFieldMap(template *ipfix.TemplateRecords) *fieldMap {
-	var fm fieldMap
+	fm := fieldMap{
+		srcAddr:                -1,
+		dstAddr:                -1,
+		protocol:               -1,
+		packets:                -1,
+		size:                   -1,
+		intIn:                  -1,
+		intOut:                 -1,
+		nextHop:                -1,
+		family:                 -1,
+		vlan:                   -1,
+		ts:                     -1,
+		srcAsn:                 -1,
+		dstAsn:                 -1,
+		srcPort:                -1,
+		dstPort:                -1,
+		samplingPacketInterval: -1,
+	}
+
 	i := -1
 	for _, f := range template.Records {
 		i++
@@ -277,8 +350,11 @@ func generateFieldMap(template *ipfix.TemplateRecords) *fieldMap {
 			fm.srcAsn = i
 		case ipfix.DstAs:
 			fm.dstAsn = i
+		case ipfix.SamplingPacketInterval:
+			fm.samplingPacketInterval = i
 		}
 	}
+
 	return &fm
 }
 

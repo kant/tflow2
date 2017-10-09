@@ -68,7 +68,7 @@ func main() {
 
 	// IPFIX Server
 	if *cfg.IPFIX.Enabled {
-		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug)
+		ifs := ifserver.New(*cfg.IPFIX.Listen, *sockReaders, *cfg.BGPAugmentation.Enabled, *cfg.Debug, cfg.Agents)
 		chans = append(chans, ifs.Output)
 	}
 

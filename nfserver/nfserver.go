@@ -376,13 +376,6 @@ func (nfs *NetflowServer) updateTemplateCache(remote net.IP, p *nf9.Packet) {
 	}
 }
 
-/*func (nfs *NetflowServer) updateOptionsTemplateCache(remote net.IP, p *nf9.Packet) {
-	templRecs := p.GetOptionsTemplateRecords()
-	for _, tr := range templRecs {
-		nfs.tmplCache.set(convert.Uint32(remote), tr.Packet.Header.SourceID, tr.Header.TemplateID, *tr)
-	}
-}*/
-
 // makeTemplateKey creates a string of the 3 tuple router address, source id and template id
 func makeTemplateKey(addr string, sourceID uint32, templateID uint16, keyParts []string) string {
 	keyParts[0] = addr

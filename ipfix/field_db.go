@@ -108,4 +108,5 @@ const (
 	ApplicationDescription    = 94
 	ApplicationTag            = 95
 	ApplicationName           = 96
+	SamplingPacketInterval    = 305
 )
