@@ -155,9 +155,7 @@ function loadAgents() {
     return $.getJSON("/agents", function(data) {
         rtrs = data;
         for (var k in data.Agents) {
-            console.log(data.Agents[k].Name);
             agents.push(data.Agents[k].Name);
-            console.log(k);
         }
 
         $("#Agent").autocomplete({
