@@ -175,12 +175,12 @@ function formatTimestamp(date) {
 }
 
 $(document).ready(function() {
-    var start = formatTimestamp(new Date(((new Date() / 1000) - 900)* 1000))
+    var start = formatTimestamp(new Date(((new Date() / 1000) - 900 - now.getTimezoneOffset() * 60)* 1000));
     if ($("#Timestamp_gt").val() == "") {
         $("#Timestamp_gt").val(start);
     }
 
-    var end = formatTimestamp(new Date())
+    var end = formatTimestamp(new Date(((new Date() / 1000) - now.getTimezoneOffset() * 60)* 1000));
     if ($("#Timestamp_lt").val() == "") {
         $("#Timestamp_lt").val(end);
     }
