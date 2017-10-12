@@ -258,7 +258,7 @@ func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 
 	// Create dir if doesn't exist
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
-	os.Mkdir(fmt.Sprintf("%s/%s", fdb.storage, ymd), 0700)
+	os.Mkdir(fmt.Sprintf("%s/%s", *fdb.storage, ymd), 0700)
 
 	// Create file
 	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", *fdb.storage, ymd, ts, router))
