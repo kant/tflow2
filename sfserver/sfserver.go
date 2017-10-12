@@ -211,7 +211,7 @@ func (sfs *SflowServer) processPacket(agent net.IP, buffer []byte) {
 					glog.Errorf("%v", err)
 				}
 			}
-		} else if ether.EtherType == packet.EtherTypeARP {
+		} else if ether.EtherType == packet.EtherTypeARP || ether.EtherType == packet.EtherTypeLACP {
 			continue
 		} else {
 			glog.Errorf("Unknown EtherType: 0x%x", ether.EtherType)

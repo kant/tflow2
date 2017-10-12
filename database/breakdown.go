@@ -207,87 +207,90 @@ func breakdown(node *avltree.TreeNode, vals ...interface{}) {
 	bd := vals[2].(BreakdownFlags)
 	sums := vals[3].(*concurrentResSum)
 	buckets := vals[4].(BreakdownMap)
-	fl := node.Value.(*netflow.Flow)
 
-	key := BreakdownKey{}
+	for _, flow := range node.Values {
+		fl := flow.(*netflow.Flow)
 
-	if bd.Family {
-		key[FieldFamily] = fmt.Sprintf("%d", fl.Family)
-	}
-	if bd.SrcAddr {
-		key[FieldSrcAddr] = net.IP(fl.SrcAddr).String()
-	}
-	if bd.DstAddr {
-		key[FieldDstAddr] = net.IP(fl.DstAddr).String()
-	}
-	if bd.Protocol {
-		protoMap := iana.GetIPProtocolsByID()
-		if _, ok := protoMap[uint8(fl.Protocol)]; ok {
-			key[FieldProtocol] = fmt.Sprintf("%s", protoMap[uint8(fl.Protocol)])
-		} else {
-			key[FieldProtocol] = fmt.Sprintf("%d", fl.Protocol)
+		key := BreakdownKey{}
+
+		if bd.Family {
+			key[FieldFamily] = fmt.Sprintf("%d", fl.Family)
 		}
-	}
-	if bd.IntIn {
-		key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
-	}
-	if bd.IntOut {
-		key[FieldIntOut] = fmt.Sprintf("%d", fl.IntOut)
-	}
-	if bd.IntInName {
-		if _, ok := intfMap[uint16(fl.IntIn)]; ok {
-			name := intfMap[uint16(fl.IntIn)]
-			key[FieldIntIn] = fmt.Sprintf("%s", name)
-		} else {
+		if bd.SrcAddr {
+			key[FieldSrcAddr] = net.IP(fl.SrcAddr).String()
+		}
+		if bd.DstAddr {
+			key[FieldDstAddr] = net.IP(fl.DstAddr).String()
+		}
+		if bd.Protocol {
+			protoMap := iana.GetIPProtocolsByID()
+			if _, ok := protoMap[uint8(fl.Protocol)]; ok {
+				key[FieldProtocol] = fmt.Sprintf("%s", protoMap[uint8(fl.Protocol)])
+			} else {
+				key[FieldProtocol] = fmt.Sprintf("%d", fl.Protocol)
+			}
+		}
+		if bd.IntIn {
 			key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
 		}
-	}
-	if bd.IntOutName {
-		if _, ok := intfMap[uint16(fl.IntOut)]; ok {
-			name := intfMap[uint16(fl.IntOut)]
-			key[FieldIntOut] = fmt.Sprintf("%s", name)
-		} else {
-			key[FieldIntOut] = fmt.Sprintf("%d", fl.IntIn)
+		if bd.IntOut {
+			key[FieldIntOut] = fmt.Sprintf("%d", fl.IntOut)
 		}
-	}
-	if bd.NextHop {
-		key[FieldNextHop] = net.IP(fl.NextHop).String()
-	}
-	if bd.SrcAsn {
-		key[FieldSrcAs] = fmt.Sprintf("%d", fl.SrcAs)
-	}
-	if bd.DstAsn {
-		key[FieldDstAs] = fmt.Sprintf("%d", fl.DstAs)
-	}
-	if bd.NextHopAsn {
-		key[FieldNextHopAs] = fmt.Sprintf("%d", fl.NextHopAs)
-	}
-	if bd.SrcPfx {
-		if fl.SrcPfx != nil {
-			key[FieldSrcPfx] = fl.SrcPfx.ToIPNet().String()
-		} else {
-			key[FieldSrcPfx] = "0.0.0.0/0"
+		if bd.IntInName {
+			if _, ok := intfMap[uint16(fl.IntIn)]; ok {
+				name := intfMap[uint16(fl.IntIn)]
+				key[FieldIntIn] = fmt.Sprintf("%s", name)
+			} else {
+				key[FieldIntIn] = fmt.Sprintf("%d", fl.IntIn)
+			}
 		}
-	}
-	if bd.DstPfx {
-		if fl.DstPfx != nil {
-			key[FieldDstPfx] = fl.DstPfx.ToIPNet().String()
-		} else {
-			key[FieldDstPfx] = "0.0.0.0/0"
+		if bd.IntOutName {
+			if _, ok := intfMap[uint16(fl.IntOut)]; ok {
+				name := intfMap[uint16(fl.IntOut)]
+				key[FieldIntOut] = fmt.Sprintf("%s", name)
+			} else {
+				key[FieldIntOut] = fmt.Sprintf("%d", fl.IntIn)
+			}
 		}
-	}
-	if bd.SrcPort {
-		key[FieldSrcPort] = fmt.Sprintf("%d", fl.SrcPort)
-	}
-	if bd.DstPort {
-		key[FieldDstPort] = fmt.Sprintf("%d", fl.DstPort)
-	}
+		if bd.NextHop {
+			key[FieldNextHop] = net.IP(fl.NextHop).String()
+		}
+		if bd.SrcAsn {
+			key[FieldSrcAs] = fmt.Sprintf("%d", fl.SrcAs)
+		}
+		if bd.DstAsn {
+			key[FieldDstAs] = fmt.Sprintf("%d", fl.DstAs)
+		}
+		if bd.NextHopAsn {
+			key[FieldNextHopAs] = fmt.Sprintf("%d", fl.NextHopAs)
+		}
+		if bd.SrcPfx {
+			if fl.SrcPfx != nil {
+				key[FieldSrcPfx] = fl.SrcPfx.ToIPNet().String()
+			} else {
+				key[FieldSrcPfx] = "0.0.0.0/0"
+			}
+		}
+		if bd.DstPfx {
+			if fl.DstPfx != nil {
+				key[FieldDstPfx] = fl.DstPfx.ToIPNet().String()
+			} else {
+				key[FieldDstPfx] = "0.0.0.0/0"
+			}
+		}
+		if bd.SrcPort {
+			key[FieldSrcPort] = fmt.Sprintf("%d", fl.SrcPort)
+		}
+		if bd.DstPort {
+			key[FieldDstPort] = fmt.Sprintf("%d", fl.DstPort)
+		}
 
-	// Build sum for key
-	buckets[key] += fl.Size * fl.Samplerate
+		// Build sum for key
+		buckets[key] += fl.Size * fl.Samplerate
 
-	// Build overall sum
-	sums.Lock.Lock()
-	sums.Values[key] += fl.Size * fl.Samplerate
-	sums.Lock.Unlock()
+		// Build overall sum
+		sums.Lock.Lock()
+		sums.Values[key] += fl.Size * fl.Samplerate
+		sums.Lock.Unlock()
+	}
 }

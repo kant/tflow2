@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -481,5 +482,13 @@ func TestQuery(t *testing.T) {
 		}
 
 		assert.Equal(t, test.expectedResult, *result, test.name)
+	}
+}
+
+func dumpRes(res Result) {
+	for ts := range res.Data {
+		for k, v := range res.Data[ts] {
+			fmt.Printf("TS: %d\tKey: %v\t %d\n", ts, k, v)
+		}
 	}
 }

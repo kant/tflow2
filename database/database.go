@@ -286,16 +286,19 @@ func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 func dump(node *avltree.TreeNode, vals ...interface{}) {
 	anonymize := vals[0].(bool)
 	flows := vals[1].(*netflow.Flows)
-	flow := node.Value.(*netflow.Flow)
-	flowcopy := *flow
 
-	if anonymize {
-		// Remove information about particular IP addresses for privacy reason
-		flowcopy.SrcAddr = []byte{0, 0, 0, 0}
-		flowcopy.DstAddr = []byte{0, 0, 0, 0}
+	for _, f := range node.Values {
+		flow := f.(*netflow.Flow)
+		flowcopy := *flow
+
+		if anonymize {
+			// Remove information about particular IP addresses for privacy reason
+			flowcopy.SrcAddr = []byte{0, 0, 0, 0}
+			flowcopy.DstAddr = []byte{0, 0, 0, 0}
+		}
+
+		flows.Flows = append(flows.Flows, &flowcopy)
 	}
-
-	flows.Flows = append(flows.Flows, &flowcopy)
 }
 
 // ptrIsSmaller checks if uintptr c1 is smaller than uintptr c2
@@ -323,6 +326,7 @@ func dumpFlows(tree *avltree.TreeNode) {
 
 // printNode dumps the flow of `node` on the screen
 func printNode(node *avltree.TreeNode, vals ...interface{}) {
-	fl := node.Value.(*netflow.Flow)
-	nfserver.Dump(fl)
+	for _, fl := range node.Values {
+		nfserver.Dump(fl.(*netflow.Flow))
+	}
 }

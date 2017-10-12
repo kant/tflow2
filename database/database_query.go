@@ -357,7 +357,7 @@ func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, topN int) map[Brea
 	return topKeys
 }
 
-// RunQuery executes a query and returns the result as JSON on `w`
+// RunQuery executes a query and returns the result
 func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 	queryStart := time.Now()
 	stats.GlobalStats.Queries++

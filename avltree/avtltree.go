@@ -37,7 +37,7 @@ type TreeNode struct {
 	left      *TreeNode
 	right     *TreeNode
 	key       interface{}
-	Value     interface{}
+	Values    []interface{}
 	height    int64
 	issmaller Comparable
 }
@@ -154,7 +154,7 @@ func (root *TreeNode) delete(key interface{}) *TreeNode {
 
 		tmp := root.minValueNode()
 		root.key = tmp.key
-		root.Value = tmp.Value
+		root.Values = tmp.Values
 		root.right = root.right.delete(tmp.key)
 
 		root.height = max(root.left.getHeight(), root.right.getHeight()) + 1
@@ -204,18 +204,25 @@ func (t *Tree) Insert(key interface{}, value interface{}, issmaller Comparable) 
 func (root *TreeNode) insert(key interface{}, value interface{}, issmaller Comparable) (*TreeNode, *TreeNode) {
 	if root == nil {
 		root = &TreeNode{
-			left:      nil,
-			right:     nil,
-			key:       key,
-			Value:     value,
+			left:  nil,
+			right: nil,
+			key:   key,
+			Values: []interface{}{
+				value,
+			},
 			height:    0,
 			issmaller: issmaller,
 		}
 		return root, root
 	}
 
+	if isEqual(key, root.key) {
+		root.Values = append(root.Values, value)
+		return root, root
+	}
+
 	var new *TreeNode
-	if root.issmaller(key, root.key) || isEqual(key, root.key) {
+	if root.issmaller(key, root.key) {
 		root.left, new = root.left.insert(key, value, issmaller)
 		if root.left.getHeight()-root.right.getHeight() == 2 {
 			if root.issmaller(key, root.left.key) {
@@ -413,7 +420,7 @@ func (root *TreeNode) dump() (res []interface{}) {
 		tmp := root.left.dump()
 		res = append(res, tmp...)
 	}
-	res = append(res, root.Value)
+	res = append(res, root.Values...)
 	if root.right != nil {
 		tmp := root.right.dump()
 		res = append(res, tmp...)
@@ -438,18 +445,20 @@ func (root *TreeNode) topN(n int) (res []interface{}) {
 	if root == nil {
 		return res
 	}
+
 	if root.right != nil {
 		tmp := root.right.topN(n)
 		for _, k := range tmp {
 			if len(res) == n {
 				return res
 			}
+
 			res = append(res, k)
 		}
 	}
 
 	if len(res) < n {
-		res = append(res, root.Value)
+		res = append(res, root.Values...)
 	}
 
 	if len(res) == n {
