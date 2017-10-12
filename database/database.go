@@ -222,6 +222,10 @@ func (fdb *FlowDatabase) Dumper() {
 }
 
 func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
+	if fdb.storage == nil {
+		return
+	}
+
 	fdb.lock.RLock()
 	tg := fdb.flows[ts][router]
 	tree := fdb.flows[ts][router].Any.Get(anyIndex)
@@ -257,7 +261,7 @@ func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 	os.Mkdir(fmt.Sprintf("%s/%s", fdb.storage, ymd), 0700)
 
 	// Create file
-	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, router))
+	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", *fdb.storage, ymd, ts, router))
 	if err != nil {
 		glog.Errorf("couldn't create file: %v", err)
 	}

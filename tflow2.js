@@ -22,7 +22,6 @@ function drawChart() {
         return;
     }
 
-    console.log("/query?" + query);
     $.ajax({
         type: "GET",
         url: "/query?" + query,
