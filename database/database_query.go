@@ -406,8 +406,6 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 		tsTree.Insert(ts, ts, int64IsSmaller)
 	}
 
-	glog.Infof("Query %s took %d ns\n", q, time.Since(queryStart))
-
 	// Generate topKeys if required
 	var topKeys map[BreakdownKey]void
 	if q.TopN > 0 {
@@ -418,6 +416,8 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 	for _, ts := range tsTree.Dump() {
 		timestamps = append(timestamps, ts.(int64))
 	}
+
+	glog.Infof("Query %s took %d ns\n", q, time.Since(queryStart))
 
 	return &Result{
 		TopKeys:     topKeys,
