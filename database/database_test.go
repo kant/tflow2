@@ -1,10 +1,11 @@
 package database
 
 import (
-	"fmt"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/taktv6/tflow2/convert"
 	"github.com/taktv6/tflow2/iana"
@@ -45,9 +46,7 @@ func TestQuery(t *testing.T) {
 		expectedResult Result
 	}{
 		{
-			/*
-				Testcase: 2 flows from AS100 to AS300 and back (TCP session).
-			*/
+			// Testcase: 2 flows from AS100 to AS300 and back (TCP session).
 			name: "Test 1",
 			flows: []*netflow.Flow{
 				&netflow.Flow{
@@ -187,10 +186,8 @@ func TestQuery(t *testing.T) {
 		},
 
 		{
-			/*
-				Testcase: 2 flows from AS100 to AS300 and back (TCP session).
-				Opposite direction of Test 1
-			*/
+			// Testcase: 2 flows from AS100 to AS300 and back (TCP session).
+			// Opposite direction of Test 1
 			name: "Test 2",
 			flows: []*netflow.Flow{
 				&netflow.Flow{
@@ -330,10 +327,8 @@ func TestQuery(t *testing.T) {
 		},
 
 		{
-			/*
-				Testcase: 2 flows from AS100 to AS300 and back (TCP session).
-				Test TopN function
-			*/
+			// Testcase: 2 flows from AS100 to AS300 and back (TCP session).
+			// Test TopN function
 			name: "Test 3",
 			flows: []*netflow.Flow{
 				&netflow.Flow{
@@ -458,6 +453,10 @@ func TestQuery(t *testing.T) {
 							FieldSrcAddr: "10.0.0.1",
 							FieldDstAddr: "30.0.0.1",
 						}: 4004,
+						BreakdownKey{
+							FieldSrcAddr: "10.0.0.1",
+							FieldDstAddr: "30.0.0.2",
+						}: 4000,
 					},
 				},
 				Aggregation: minute,
@@ -481,83 +480,6 @@ func TestQuery(t *testing.T) {
 			t.Errorf("Unexpected error on RunQuery: %v", err)
 		}
 
-		for k := range result.TopKeys {
-			for ts := range result.Data {
-				x := result.Data[ts]
-				v := x[k]
-				fmt.Printf("TS: %d, Key: %v, Value: %d\n", ts, k, v)
-			}
-		}
-
-		if err := compareResults(test.expectedResult, *result); err != nil {
-			t.Errorf("%v", err)
-		}
-
+		assert.Equal(t, test.expectedResult, *result, test.name)
 	}
-}
-
-func compareResults(res1 Result, res2 Result) error {
-	if err := compareTopKeys(res1.TopKeys, res2.TopKeys); err != nil {
-		return err
-	}
-
-	if err := compareTimestamps(res1.Timestamps, res2.Timestamps); err != nil {
-		return err
-	}
-
-	if res1.Aggregation != res2.Aggregation {
-		return fmt.Errorf("Aggregation %d != %d", res1.Aggregation, res2.Aggregation)
-	}
-
-	if err := compareData(res1.Data, res2.Data); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func compareData(data1 map[int64]BreakdownMap, data2 map[int64]BreakdownMap) error {
-	for ts, bdm := range data1 {
-		if _, ok := data2[ts]; !ok {
-			return fmt.Errorf("TS %d does not exist in data2", ts)
-		}
-
-		for bdk := range bdm {
-			if _, ok := data2[ts][bdk]; !ok {
-				return fmt.Errorf("BreakDownKey %v exists in data1 but not in data2 for TS=%d", bdk, ts)
-			}
-
-			if data1[ts][bdk] != data2[ts][bdk] {
-				return fmt.Errorf("Values for TS=%d BDK=%v differing: %d != %d", ts, bdk, data1[ts][bdk], data2[ts][bdk])
-			}
-		}
-	}
-
-	return nil
-}
-
-func compareTimestamps(ts1 []int64, ts2 []int64) error {
-	for i, a := range ts1 {
-		if ts2[i] != a {
-			return fmt.Errorf("TS %d != %d", a, ts2[i])
-		}
-	}
-
-	return nil
-}
-
-func compareTopKeys(tk1 map[BreakdownKey]void, tk2 map[BreakdownKey]void) error {
-	for k1 := range tk1 {
-		if _, ok := tk2[k1]; !ok {
-			return fmt.Errorf("Top key %v is in tk1 but not in tk2", k1)
-		}
-	}
-
-	for k2 := range tk2 {
-		if _, ok := tk1[k2]; !ok {
-			return fmt.Errorf("Top key %v is in tk2 but not in tk1", k2)
-		}
-	}
-
-	return nil
 }

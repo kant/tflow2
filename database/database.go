@@ -175,8 +175,6 @@ func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	timeGroup.DstPfx.Insert(fl.DstPfx.String(), fl)
 	timeGroup.SrcPort.Insert(fl.SrcPort, fl)
 	timeGroup.DstPort.Insert(fl.DstPort, fl)
-
-	glog.Infof("Finished db insert")
 }
 
 // CurrentTimeslot returns the beginning of the current timeslot

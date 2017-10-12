@@ -351,7 +351,6 @@ func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, topN int) map[Brea
 	topKeysList := btree.TopN(topN)
 	topKeys := make(map[BreakdownKey]void)
 	for _, v := range topKeysList {
-		fmt.Printf("Key: %v\n", v.(BreakdownKey))
 		topKeys[v.(BreakdownKey)] = void{}
 	}
 
