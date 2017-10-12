@@ -113,5 +113,6 @@ func (fe *Frontend) translateQuery(params url.Values) (q database.Query, errors 
 			errors = append(errors, err)
 		}
 	}
+
 	return
 }

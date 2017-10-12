@@ -212,9 +212,23 @@ func (sfs *SflowServer) processPacket(agent net.IP, buffer []byte) {
 				}
 			}
 		} else if ether.EtherType == packet.EtherTypeARP {
-			// Ignore ARP
+			continue
 		} else {
 			glog.Errorf("Unknown EtherType: 0x%x", ether.EtherType)
+		}
+
+		_, n, err := net.ParseCIDR("185.37.152.0/22")
+		if err != nil {
+			glog.Errorf("Unable to parse prefix.")
+		}
+
+		BCIX := uint32(706)
+		if fl.IntOut == BCIX {
+			if !n.Contains(net.IP(fl.SrcAddr)) {
+				Dump(fl)
+			} else {
+				//sfs.Output <- fl
+			}
 		}
 
 		sfs.Output <- fl

@@ -92,7 +92,7 @@ func main() {
 		*dbAddWorkers,
 		*cfg.Debug,
 		*cfg.CompressionLevel,
-		*cfg.DataDir,
+		cfg.DataDir,
 		*cfg.Anonymize,
 		inftMapper,
 		cfg.AgentsNameByIP,

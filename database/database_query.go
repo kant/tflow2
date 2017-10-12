@@ -125,9 +125,13 @@ func (conditions Conditions) Includes(field int, operator int) bool {
 
 // loadFromDisc loads netflow data from disk into in memory data structure
 func (fdb *FlowDatabase) loadFromDisc(ts int64, agent string, query Query, resSum *concurrentResSum) (BreakdownMap, error) {
+	if fdb.storage == nil {
+		return nil, fmt.Errorf("Disk storage is disabled")
+	}
+
 	res := avltree.New()
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
-	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, agent)
+	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", *fdb.storage, ymd, ts, agent)
 	fh, err := os.Open(filename)
 	if err != nil {
 		if fdb.debug > 0 {
@@ -347,6 +351,7 @@ func (fdb *FlowDatabase) getTopKeys(resSum *concurrentResSum, topN int) map[Brea
 	topKeysList := btree.TopN(topN)
 	topKeys := make(map[BreakdownKey]void)
 	for _, v := range topKeysList {
+		fmt.Printf("Key: %v\n", v.(BreakdownKey))
 		topKeys[v.(BreakdownKey)] = void{}
 	}
 
@@ -363,15 +368,17 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 		return nil, fmt.Errorf("Failed to Start/End times: %v", err)
 	}
 
-	glog.Infof("RunQuery: start=%d end=%d current=%d", start, end, fdb.CurrentTimeslot())
-
 	rtr, err := fdb.getAgent(q)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get router: %v", err)
 	}
 
-	resSum := &concurrentResSum{}
-	resSum.Values = make(BreakdownMap)
+	// resSum holds a sum per breakdown key over all timestamps
+	resSum := &concurrentResSum{
+		Values: make(BreakdownMap),
+	}
+
+	// resTime holds individual sums per breakdown key and ts
 	resTime := make(map[int64]BreakdownMap)
 	resMtx := sync.Mutex{}
 	resWg := sync.WaitGroup{}
@@ -393,7 +400,6 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 	}
 
 	resWg.Wait()
-	glog.Infof("Done reading results")
 
 	// Find all timestamps we have and get them sorted
 	tsTree := avltree.New()
@@ -409,9 +415,14 @@ func (fdb *FlowDatabase) RunQuery(q *Query) (*Result, error) {
 		topKeys = fdb.getTopKeys(resSum, q.TopN)
 	}
 
+	timestamps := make([]int64, 0)
+	for _, ts := range tsTree.Dump() {
+		timestamps = append(timestamps, ts.(int64))
+	}
+
 	return &Result{
 		TopKeys:     topKeys,
-		Timestamps:  tsTree.Dump(),
+		Timestamps:  timestamps,
 		Data:        resTime,
 		Aggregation: fdb.aggregation,
 	}, nil

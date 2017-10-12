@@ -1,7 +1,6 @@
 package srcache
 
 import (
-	"fmt"
 	"net"
 	"sync"
 
@@ -33,7 +32,6 @@ func (s *SamplerateCache) Set(rtr net.IP, rate uint64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	fmt.Printf("Setting %s samplerate to %d\n", rtr.String(), rate)
 	s.cache[string(rtr)] = rate
 }
 

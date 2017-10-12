@@ -49,6 +49,7 @@ type fieldMap struct {
 	dstAsn                    int
 	srcPort                   int
 	dstPort                   int
+	flowSamplerID             int
 	samplingInterval          int
 	flowSamplerRandomInterval int
 }
@@ -265,7 +266,11 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 			}
 		}
 
-		fl.Samplerate = nfs.sampleRateCache.Get(agent)
+		if fm.flowSamplerID >= 0 {
+			// TODO: Looup Sampler in Cache anf set SampleRate
+
+			//fl.Samplerate = nfs.sampleRateCache.Get(agent)
+		}
 
 		if *nfs.config.Debug > 2 {
 			Dump(&fl)
@@ -319,6 +324,7 @@ func generateFieldMap(template *nf9.TemplateRecords) *fieldMap {
 		dstAsn:                    -1,
 		srcPort:                   -1,
 		dstPort:                   -1,
+		flowSamplerID:             -1,
 		samplingInterval:          -1,
 		flowSamplerRandomInterval: -1,
 	}

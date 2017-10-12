@@ -106,6 +106,13 @@ func Int64Byte(data int64) (ret []byte) {
 	return buf.Bytes()
 }
 
+// Uint64Byte converts a uint64 to a byte slice in BigEndian
+func Uint64Byte(data uint64) (ret []byte) {
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, data)
+	return buf.Bytes()
+}
+
 // Reverse reverses byte slice without allocating new memory
 func Reverse(data []byte) []byte {
 	n := len(data)

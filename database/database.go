@@ -44,11 +44,11 @@ type FlowDatabase struct {
 	lastDump       int64
 	compLevel      int
 	samplerate     int
-	storage        string
+	storage        *string
 	debug          int
 	anonymize      bool
 	Input          chan *netflow.Flow
-	intfMapper     *intfmapper.Mapper
+	intfMapper     intfmapper.IntfMapperInterface
 	agentsNameByIP map[string]string
 	iana           *iana.IANA
 }
@@ -56,7 +56,7 @@ type FlowDatabase struct {
 const anyIndex = uint8(0)
 
 // New creates a new FlowDatabase and returns a pointer to it
-func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel int, storage string, anonymize bool, intfMapper *intfmapper.Mapper, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
+func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel int, storage *string, anonymize bool, intfMapper intfmapper.IntfMapperInterface, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
 	flowDB := &FlowDatabase{
 		maxAge:         maxAge,
 		aggregation:    aggregation,
@@ -89,14 +89,16 @@ func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel
 			}
 		}()
 
-		go func() {
-			for {
-				// Set a timer and wait for our next run
-				event := time.NewTimer(time.Duration(flowDB.aggregation) * time.Second)
-				<-event.C
-				flowDB.Dumper()
-			}
-		}()
+		if flowDB.storage != nil {
+			go func() {
+				for {
+					// Set a timer and wait for our next run
+					event := time.NewTimer(time.Duration(flowDB.aggregation) * time.Second)
+					<-event.C
+					flowDB.Dumper()
+				}
+			}()
+		}
 	}
 	return flowDB
 }
@@ -173,6 +175,8 @@ func (fdb *FlowDatabase) Add(fl *netflow.Flow) {
 	timeGroup.DstPfx.Insert(fl.DstPfx.String(), fl)
 	timeGroup.SrcPort.Insert(fl.SrcPort, fl)
 	timeGroup.DstPort.Insert(fl.DstPort, fl)
+
+	glog.Infof("Finished db insert")
 }
 
 // CurrentTimeslot returns the beginning of the current timeslot

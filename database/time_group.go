@@ -82,7 +82,6 @@ func (tg *TimeGroup) filterAndBreakdown(resSum *concurrentResSum, q *Query, iana
 	res := avltree.Intersection(candidates)
 	if res == nil {
 		glog.Warningf("Intersection result was empty!")
-		res = tg.Any.Get(anyIndex)
 	}
 
 	// Breakdown

@@ -122,7 +122,12 @@ func TestIntegration(t *testing.T) {
 				t.Errorf("Unable to decode IPv4 packet: %v", err)
 			}
 
-			fmt.Printf("IPv4 SRC: %s\n", net.IP(convert.Reverse(ipv4.SrcAddr[:])).String())
+			convert.Reverse(ipv4.SrcAddr[:])
+			if net.IP(ipv4.SrcAddr[:]).String() != "185.37.153.238" {
+				t.Errorf("Wrong IPv4 src address: Got %v. Expected %v", net.IP(convert.Reverse(ipv4.SrcAddr[:])).String(), "185.37.153.238")
+			}
+
+			fmt.Printf("IPv4 SRC: %s\n", net.IP(ipv4.SrcAddr[:]).String())
 
 			if ipv4.Protocol == 6 {
 				tcpPtr := unsafe.Pointer(uintptr(ipv4Ptr) - packet.SizeOfIPv4Header)

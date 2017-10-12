@@ -23,7 +23,7 @@ var (
 type IPv6Header struct {
 	DstAddr                      [16]byte
 	SrcAddr                      [16]byte
-	HotLimit                     uint8
+	HopLimit                     uint8
 	NextHeader                   uint8
 	PayloadLength                uint16
 	VersionTrafficClassFlowLabel uint32

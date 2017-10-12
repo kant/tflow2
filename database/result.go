@@ -10,7 +10,7 @@ import (
 // Result is the result of a query
 type Result struct {
 	TopKeys     map[BreakdownKey]void
-	Timestamps  []interface{}          // sorted timestamps
+	Timestamps  []int64                // sorted timestamps
 	Data        map[int64]BreakdownMap // timestamps -> keys -> values
 	Aggregation int64
 }
@@ -34,11 +34,11 @@ func (res *Result) WriteCSV(writer io.Writer) {
 
 	for _, ts := range res.Timestamps {
 		line := make([]string, 0)
-		t := time.Unix(ts.(int64), 0)
+		t := time.Unix(ts, 0)
 		line = append(line, fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()))
 
 		// Top flows
-		buckets := res.Data[ts.(int64)]
+		buckets := res.Data[ts]
 		for _, k := range topKeys {
 			if _, ok := buckets[k]; !ok {
 				line = append(line, "0")

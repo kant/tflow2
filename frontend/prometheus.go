@@ -54,7 +54,7 @@ func (fe *Frontend) prometheusHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "# HELP tflow_bytes Bytes transmitted")
 	fmt.Fprintln(w, "# TYPE tflow_bytes gauge")
 
-	ts := result.Timestamps[0].(int64)
+	ts := result.Timestamps[0]
 
 	// Print the data
 	for key, val := range result.Data[ts] {

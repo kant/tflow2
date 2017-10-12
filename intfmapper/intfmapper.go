@@ -17,6 +17,11 @@ const (
 	ifNameOID = "1.3.6.1.2.1.31.1.1.1.1"
 )
 
+type IntfMapperInterface interface {
+	GetInterfaceIDByName(agent string) InterfaceIDByName
+	GetInterfaceNameByID(agent string) InterfaceNameByID
+}
+
 // Mapper is a service that maps agents interface IDs to names
 type Mapper struct {
 	agents                     []config.Agent

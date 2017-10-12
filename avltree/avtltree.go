@@ -214,12 +214,8 @@ func (root *TreeNode) insert(key interface{}, value interface{}, issmaller Compa
 		return root, root
 	}
 
-	if isEqual(key, root.key) {
-		return root, root
-	}
-
 	var new *TreeNode
-	if root.issmaller(key, root.key) {
+	if root.issmaller(key, root.key) || isEqual(key, root.key) {
 		root.left, new = root.left.insert(key, value, issmaller)
 		if root.left.getHeight()-root.right.getHeight() == 2 {
 			if root.issmaller(key, root.left.key) {
