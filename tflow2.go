@@ -104,11 +104,6 @@ func main() {
 		chans,
 		flowDB.Input,
 		*nAggr,
-		*cfg.AggregationPeriod,
-		*cfg.BGPAugmentation.Enabled,
-		*cfg.BGPAugmentation.BIRDSocket,
-		*cfg.BGPAugmentation.BIRD6Socket,
-		*cfg.Debug,
 		cfg,
 	)
 

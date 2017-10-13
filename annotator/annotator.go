@@ -29,7 +29,6 @@ import (
 type Annotator struct {
 	inputs        []chan *netflow.Flow
 	output        chan *netflow.Flow
-	aggregation   int64
 	numWorkers    int
 	bgpAugment    bool
 	birdAnnotator *bird.Annotator
@@ -38,18 +37,16 @@ type Annotator struct {
 }
 
 // New creates a new `Annotator` instance
-func New(inputs []chan *netflow.Flow, output chan *netflow.Flow, numWorkers int, aggregation int64, bgpAugment bool, birdSock string, birdSock6 string, debug int, cfg *config.Config) *Annotator {
+func New(
+	inputs []chan *netflow.Flow, output chan *netflow.Flow, numWorkers int, cfg *config.Config) *Annotator {
 	a := &Annotator{
-		inputs:      inputs,
-		output:      output,
-		aggregation: aggregation,
-		numWorkers:  numWorkers,
-		bgpAugment:  bgpAugment,
-		debug:       debug,
-		cfg:         cfg,
+		inputs:     inputs,
+		output:     output,
+		numWorkers: numWorkers,
+		cfg:        cfg,
 	}
-	if bgpAugment {
-		a.birdAnnotator = bird.NewAnnotator(birdSock, birdSock6, debug)
+	if *cfg.BGPAugmentation.Enabled {
+		a.birdAnnotator = bird.NewAnnotator(*cfg.BGPAugmentation.BIRDSocket, *cfg.BGPAugmentation.BIRD6Socket, *cfg.Debug)
 	}
 	a.Init()
 	return a
@@ -79,7 +76,7 @@ func (a *Annotator) Init() {
 					fl := <-ch
 
 					// Align timestamp on `aggrTime` raster
-					fl.Timestamp = fl.Timestamp - (fl.Timestamp % a.aggregation)
+					fl.Timestamp = fl.Timestamp - (fl.Timestamp % *a.cfg.AggregationPeriod)
 
 					// Update global statstics
 					atomic.AddUint64(&stats.GlobalStats.FlowBytes, fl.Size)
