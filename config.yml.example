@@ -26,7 +26,11 @@ bgp_augmentation:
   enabled: false
   bird_socket: "/var/run/bird/bird.ctl"
   bird6_socket: "/var/run/bird/bird6.ctl"
-  
+
+annotators:
+  - name: "BGP Annotator"
+    target: "localhost:21222"
+
 agents:
   - name: "bb01.fra01"
     ip_address: "127.0.0.1"

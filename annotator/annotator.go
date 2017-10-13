@@ -13,12 +13,25 @@
 package annotator
 
 import (
+	"context"
+	"fmt"
 	"sync/atomic"
 
+	"google.golang.org/grpc"
+
+	"github.com/golang/glog"
 	"github.com/taktv6/tflow2/annotator/bird"
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/stats"
 )
+
+type client struct{}
+
+func (c *client) Annotate(ctx context.Context, in *netflow.Flow, opts ...grpc.CallOption) (*netflow.Flow, error) {
+
+	return nil, fmt.Errorf("Not implemented")
+}
 
 // Annotator represents an flow annotator
 type Annotator struct {
@@ -28,18 +41,20 @@ type Annotator struct {
 	numWorkers    int
 	bgpAugment    bool
 	birdAnnotator *bird.Annotator
-	debug int
+	debug         int
+	cfg           *config.Config
 }
 
 // New creates a new `Annotator` instance
-func New(inputs []chan *netflow.Flow, output chan *netflow.Flow, numWorkers int, aggregation int64, bgpAugment bool, birdSock string, birdSock6 string, debug int) *Annotator {
+func New(inputs []chan *netflow.Flow, output chan *netflow.Flow, numWorkers int, aggregation int64, bgpAugment bool, birdSock string, birdSock6 string, debug int, cfg *config.Config) *Annotator {
 	a := &Annotator{
 		inputs:      inputs,
 		output:      output,
 		aggregation: aggregation,
 		numWorkers:  numWorkers,
 		bgpAugment:  bgpAugment,
-		debug:	debug,
+		debug:       debug,
+		cfg:         cfg,
 	}
 	if bgpAugment {
 		a.birdAnnotator = bird.NewAnnotator(birdSock, birdSock6, debug)
@@ -54,6 +69,19 @@ func (a *Annotator) Init() {
 	for _, ch := range a.inputs {
 		for i := 0; i < a.numWorkers; i++ {
 			go func(ch chan *netflow.Flow) {
+				clients := make([]netflow.AnnotatorClient, 0)
+				for _, an := range a.cfg.Annotators {
+					var opts []grpc.DialOption
+					opts = append(opts, grpc.WithInsecure())
+					glog.Infof("Connecting to annotator %s at %s", an.Name, an.Target)
+					conn, err := grpc.Dial(an.Target, opts...)
+					if err != nil {
+						glog.Errorf("Failed to dial: %v", err)
+					}
+
+					clients = append(clients, netflow.NewAnnotatorClient(conn))
+				}
+
 				for {
 					// Read flow from netflow/IPFIX module
 					fl := <-ch
@@ -64,6 +92,16 @@ func (a *Annotator) Init() {
 					// Update global statstics
 					atomic.AddUint64(&stats.GlobalStats.FlowBytes, fl.Size)
 					atomic.AddUint64(&stats.GlobalStats.FlowPackets, uint64(fl.Packets))
+
+					// Send flow to external annotators
+					for _, c := range clients {
+						tmpFlow, err := c.Annotate(context.Background(), fl)
+						if err != nil {
+							glog.Errorf("Unable to annotate")
+							continue
+						}
+						fl = tmpFlow
+					}
 
 					// Annotate flows with ASN and Prefix information from local BIRD (bird.nic.cz) instance
 					if a.bgpAugment {

@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package netflow;
 
+service annotator {
+  rpc Annotate (Flow) returns (Flow) {}
+}
+
 // Pfx defines an IP prefix
 message pfx {
     // IPv4 or IPv6 address

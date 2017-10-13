@@ -23,8 +23,15 @@ type Config struct {
 	Frontend        *Server     `yaml:"frontend"`
 	BGPAugmentation *BGPAugment `yaml:"bgp_augmentation"`
 	Agents          []Agent     `yaml:"agents"`
+	Annotators      []Annotator `yaml:"annotators"`
 
 	AgentsNameByIP map[string]string
+}
+
+// Annotator represents annotator configuration
+type Annotator struct {
+	Name   string
+	Target string
 }
 
 // BGPAugment represents BGP augmentation configuration

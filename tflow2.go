@@ -109,6 +109,7 @@ func main() {
 		*cfg.BGPAugmentation.BIRDSocket,
 		*cfg.BGPAugmentation.BIRD6Socket,
 		*cfg.Debug,
+		cfg,
 	)
 
 	// Frontend
