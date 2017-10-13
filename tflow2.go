@@ -18,7 +18,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/taktv6/tflow2/annotator"
+	"github.com/taktv6/tflow2/annotation"
 	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/database"
 	"github.com/taktv6/tflow2/frontend"
@@ -99,8 +99,8 @@ func main() {
 		iana,
 	)
 
-	// Start the annotator layer
-	annotator.New(
+	// Start the annotation layer
+	annotation.New(
 		chans,
 		flowDB.Input,
 		*nAggr,
