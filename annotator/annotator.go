@@ -14,7 +14,6 @@ package annotator
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	"google.golang.org/grpc"
@@ -25,13 +24,6 @@ import (
 	"github.com/taktv6/tflow2/netflow"
 	"github.com/taktv6/tflow2/stats"
 )
-
-type client struct{}
-
-func (c *client) Annotate(ctx context.Context, in *netflow.Flow, opts ...grpc.CallOption) (*netflow.Flow, error) {
-
-	return nil, fmt.Errorf("Not implemented")
-}
 
 // Annotator represents an flow annotator
 type Annotator struct {
