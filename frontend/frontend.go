@@ -48,7 +48,7 @@ func New(fdb *database.FlowDatabase, intfMapper *intfmapper.Mapper, iana *iana.I
 	}
 	fe.populateIndexHTML()
 	http.HandleFunc("/", fe.httpHandler)
-	go http.ListenAndServe(*fe.config.Frontend.Listen, nil)
+	go http.ListenAndServe(fe.config.Frontend.Listen, nil)
 	return fe
 }
 
@@ -78,7 +78,7 @@ func (fe *Frontend) agentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, agent := range fe.config.Agents {
 		a := routerJSON{
-			Name:       *agent.Name,
+			Name:       agent.Name,
 			Interfaces: make([]string, 0),
 		}
 

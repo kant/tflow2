@@ -44,7 +44,7 @@ type FlowDatabase struct {
 	lastDump       int64
 	compLevel      int
 	samplerate     int
-	storage        *string
+	storage        string
 	debug          int
 	anonymize      bool
 	Input          chan *netflow.Flow
@@ -56,7 +56,7 @@ type FlowDatabase struct {
 const anyIndex = uint8(0)
 
 // New creates a new FlowDatabase and returns a pointer to it
-func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel int, storage *string, anonymize bool, intfMapper intfmapper.IntfMapperInterface, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
+func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel int, storage string, anonymize bool, intfMapper intfmapper.IntfMapperInterface, agentsNameByIP map[string]string, iana *iana.IANA) *FlowDatabase {
 	flowDB := &FlowDatabase{
 		maxAge:         maxAge,
 		aggregation:    aggregation,
@@ -89,7 +89,7 @@ func New(aggregation int64, maxAge int64, numAddWorker int, debug int, compLevel
 			}
 		}()
 
-		if flowDB.storage != nil {
+		if flowDB.storage != "" {
 			go func() {
 				for {
 					// Set a timer and wait for our next run
@@ -222,7 +222,7 @@ func (fdb *FlowDatabase) Dumper() {
 }
 
 func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
-	if fdb.storage == nil {
+	if fdb.storage == "" {
 		return
 	}
 
@@ -258,10 +258,10 @@ func (fdb *FlowDatabase) dumpToDisk(ts int64, router string) {
 
 	// Create dir if doesn't exist
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
-	os.Mkdir(fmt.Sprintf("%s/%s", *fdb.storage, ymd), 0700)
+	os.Mkdir(fmt.Sprintf("%s/%s", fdb.storage, ymd), 0700)
 
 	// Create file
-	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", *fdb.storage, ymd, ts, router))
+	fh, err := os.Create(fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, router))
 	if err != nil {
 		glog.Errorf("couldn't create file: %v", err)
 	}

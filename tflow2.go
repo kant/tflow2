@@ -54,7 +54,7 @@ func main() {
 	// Initialize statistics module
 	stats.Init()
 
-	inftMapper, err := intfmapper.New(cfg.Agents, *cfg.AggregationPeriod)
+	inftMapper, err := intfmapper.New(cfg.Agents, cfg.AggregationPeriod)
 	if err != nil {
 		glog.Exitf("Unable to initialize interface mappper: %v", err)
 	}
@@ -87,13 +87,13 @@ func main() {
 
 	// Start the database layer
 	flowDB := database.New(
-		*cfg.AggregationPeriod,
+		cfg.AggregationPeriod,
 		*cfg.CacheTime,
 		*dbAddWorkers,
-		*cfg.Debug,
+		cfg.Debug,
 		*cfg.CompressionLevel,
 		cfg.DataDir,
-		*cfg.Anonymize,
+		cfg.Anonymize,
 		inftMapper,
 		cfg.AgentsNameByIP,
 		iana,

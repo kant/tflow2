@@ -466,7 +466,7 @@ func TestQuery(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fdb := New(minute, hour, 1, 0, 6, nil, false, &intfMapper{}, map[string]string{
+		fdb := New(minute, hour, 1, 0, 6, "", false, &intfMapper{}, map[string]string{
 			net.IP([]byte{1, 2, 3, 4}).String(): "test01.pop01",
 		}, iana.New())
 

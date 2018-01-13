@@ -48,9 +48,9 @@ func New(agents []config.Agent, renewInterval int64) (*Mapper, error) {
 	}
 
 	for _, agent := range m.agents {
-		m.interfaceIDByNameByAgent[*agent.Name] = make(InterfaceIDByName)
+		m.interfaceIDByNameByAgent[agent.Name] = make(InterfaceIDByName)
 		if err := m.renewMapping(agent); err != nil {
-			return nil, fmt.Errorf("Unable to get interface mapping for %s: %v", *agent.Name, err)
+			return nil, fmt.Errorf("Unable to get interface mapping for %s: %v", agent.Name, err)
 		}
 	}
 
@@ -66,7 +66,7 @@ func (m *Mapper) startRenewWorkers() {
 				time.Sleep(time.Second * time.Duration(m.renewInterval))
 				err := m.renewMapping(agent)
 				if err != nil {
-					glog.Infof("Unable to renew interface mapping for %s: %v", *agent.Name, err)
+					glog.Infof("Unable to renew interface mapping for %s: %v", agent.Name, err)
 				}
 			}
 		}(agent)
@@ -75,8 +75,8 @@ func (m *Mapper) startRenewWorkers() {
 
 func (m *Mapper) renewMapping(a config.Agent) error {
 	snmpClient := g.Default
-	snmpClient.Target = *a.IPAddress
-	snmpClient.Community = *a.SNMPCommunity
+	snmpClient.Target = a.IPAddress
+	snmpClient.Community = a.SNMPCommunity
 
 	if err := snmpClient.Connect(); err != nil {
 		return fmt.Errorf("SNMP client unable to connect: %v", err)
@@ -97,8 +97,8 @@ func (m *Mapper) renewMapping(a config.Agent) error {
 	m.interfaceIDByNameByAgentMu.Lock()
 	defer m.interfaceIDByNameByAgentMu.Unlock()
 
-	m.interfaceIDByNameByAgent[*a.Name] = newMapByName
-	m.interfaceNameByIDByAgent[*a.Name] = newMapByID
+	m.interfaceIDByNameByAgent[a.Name] = newMapByName
+	m.interfaceNameByIDByAgent[a.Name] = newMapByID
 
 	return nil
 }

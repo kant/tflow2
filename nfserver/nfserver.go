@@ -82,7 +82,7 @@ func New(numReaders int, config *config.Config, sampleRateCache *srcache.Sampler
 		config:          config,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", *nfs.config.NetflowV9.Listen)
+	addr, err := net.ResolveUDPAddr("udp", nfs.config.NetflowV9.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
@@ -165,7 +165,7 @@ func (nfs *NetflowServer) processFlowSets(remote net.IP, sourceID uint32, flowSe
 
 		if template == nil {
 			templateKey := makeTemplateKey(addr, sourceID, set.Header.FlowSetID, keyParts)
-			if *nfs.config.Debug > 0 {
+			if nfs.config.Debug > 0 {
 				glog.Warningf("Template for given FlowSet not found: %s", templateKey)
 			}
 			continue
@@ -256,7 +256,7 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
 		}
 
-		if !*nfs.config.BGPAugmentation.Enabled {
+		if !nfs.config.BGPAugmentation.Enabled {
 			if fm.srcAsn >= 0 {
 				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
 			}
@@ -272,7 +272,7 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 			//fl.Samplerate = nfs.sampleRateCache.Get(agent)
 		}
 
-		if *nfs.config.Debug > 2 {
+		if nfs.config.Debug > 2 {
 			Dump(&fl)
 		}
 

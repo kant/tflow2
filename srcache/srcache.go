@@ -21,7 +21,7 @@ func New(agents []config.Agent) *SamplerateCache {
 
 	// Initialize cache with configured samplerates
 	for _, a := range agents {
-		c.Set(net.ParseIP(*a.IPAddress), *a.SampleRate)
+		c.Set(net.ParseIP(a.IPAddress), a.SampleRate)
 	}
 
 	return c
