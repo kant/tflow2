@@ -13,6 +13,7 @@ jobs:
       - checkout
       - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: dep ensure -v
+      - run: .circleci/gofmt.sh
 
       - run: go get github.com/mattn/goveralls
       - run: go test -v -cover -race -coverprofile=coverage.out ./...
