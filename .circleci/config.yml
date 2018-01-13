@@ -13,9 +13,15 @@ jobs:
       - checkout
       - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: dep ensure -v
-      - run: .circleci/gofmt.sh
 
       - run: go get github.com/mattn/goveralls
       - run: go test -v -cover -race -coverprofile=coverage.out ./...
       - run: goveralls -coverprofile=coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - run: go install github.com/taktv6/tflow2
+
+      # check goftm
+      - run: .circleci/gofmt.sh
+
+      # check misspell
+      - run: go get github.com/client9/misspell/cmd/misspell
+      - run: misspell -error .
