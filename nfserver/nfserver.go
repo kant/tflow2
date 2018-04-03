@@ -266,11 +266,7 @@ func (nfs *NetflowServer) processFlowSet(template *nf9.TemplateRecords, records 
 			}
 		}
 
-		if fm.flowSamplerID >= 0 {
-			// TODO: Looup Sampler in Cache anf set SampleRate
-
-			//fl.Samplerate = nfs.sampleRateCache.Get(agent)
-		}
+		fl.Samplerate = nfs.sampleRateCache.Get(agent)
 
 		if *nfs.config.Debug > 2 {
 			Dump(&fl)
