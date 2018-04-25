@@ -11,7 +11,11 @@
 
 package convert
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestIPByteSlice(t *testing.T) {
 	tests := []struct {
@@ -178,4 +182,28 @@ func sliceEq(a []byte, b []byte) bool {
 		}
 	}
 	return true
+}
+
+func TestUint16Byte(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint16
+		expected []byte
+	}{
+		{
+			name:     "Test #1",
+			input:    23,
+			expected: []byte{0, 23},
+		},
+		{
+			name:     "Test #1",
+			input:    256,
+			expected: []byte{1, 0},
+		},
+	}
+
+	for _, test := range tests {
+		res := Uint16Byte(test.input)
+		assert.Equal(t, test.expected, res)
+	}
 }
