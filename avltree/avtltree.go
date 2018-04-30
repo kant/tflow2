@@ -60,10 +60,13 @@ func (root *TreeNode) getHeight() int64 {
 
 // TreeMinValueNode returns the node with the minimal key in the tree
 func (root *TreeNode) minValueNode() *TreeNode {
-	for root.left != nil {
-		return root.left.minValueNode()
+	if root.left == nil {
+		// If no left element is available, we are at the smallest key
+		// so we return ourself
+		return root
 	}
-	return nil
+
+	return root.left.minValueNode()
 }
 
 // search searches element with key `key` in tree with root `root`
