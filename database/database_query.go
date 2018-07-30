@@ -125,13 +125,13 @@ func (conditions Conditions) Includes(field int, operator int) bool {
 
 // loadFromDisc loads netflow data from disk into in memory data structure
 func (fdb *FlowDatabase) loadFromDisc(ts int64, agent string, query Query, resSum *concurrentResSum) (BreakdownMap, error) {
-	if fdb.storage == nil {
+	if fdb.storage == "" {
 		return nil, fmt.Errorf("Disk storage is disabled")
 	}
 
 	res := avltree.New()
 	ymd := fmt.Sprintf("%04d-%02d-%02d", time.Unix(ts, 0).Year(), time.Unix(ts, 0).Month(), time.Unix(ts, 0).Day())
-	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", *fdb.storage, ymd, ts, agent)
+	filename := fmt.Sprintf("%s/%s/nf-%d-%s.tflow2.pb.gzip", fdb.storage, ymd, ts, agent)
 	fh, err := os.Open(filename)
 	if err != nil {
 		if fdb.debug > 0 {

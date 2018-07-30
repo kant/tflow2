@@ -44,8 +44,8 @@ func New(inputs []chan *netflow.Flow, output chan *netflow.Flow, numWorkers int,
 		numWorkers: numWorkers,
 		cfg:        cfg,
 	}
-	if *cfg.BGPAugmentation.Enabled {
-		a.birdAnnotator = bird.NewAnnotator(*cfg.BGPAugmentation.BIRDSocket, *cfg.BGPAugmentation.BIRD6Socket, *cfg.Debug)
+	if cfg.BGPAugmentation.Enabled {
+		a.birdAnnotator = bird.NewAnnotator(cfg.BGPAugmentation.BIRDSocket, cfg.BGPAugmentation.BIRD6Socket, cfg.Debug)
 	}
 	a.Init()
 	return a
@@ -75,7 +75,7 @@ func (a *Annotator) Init() {
 					fl := <-ch
 
 					// Align timestamp on `aggrTime` raster
-					fl.Timestamp = fl.Timestamp - (fl.Timestamp % *a.cfg.AggregationPeriod)
+					fl.Timestamp = fl.Timestamp - (fl.Timestamp % a.cfg.AggregationPeriod)
 
 					// Update global statstics
 					atomic.AddUint64(&stats.GlobalStats.FlowBytes, fl.Size)

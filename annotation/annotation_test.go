@@ -14,18 +14,21 @@ package annotation
 import (
 	"testing"
 
+	"github.com/taktv6/tflow2/config"
 	"github.com/taktv6/tflow2/netflow"
 )
 
 func TestTimestampAggr(t *testing.T) {
 	outCh := make(chan *netflow.Flow)
-	var aggr int64 = 60
 	nWorkers := 1
 
 	inCh := make([]chan *netflow.Flow, 0)
 	inCh = append(inCh, make(chan *netflow.Flow))
 
-	a := New(inCh, outCh, nWorkers, aggr, false, "", "", 0)
+	a := New(inCh, outCh, nWorkers, &config.Config{
+		AggregationPeriod: 60,
+		BGPAugmentation:   &config.BGPAugment{},
+	})
 	a.Init()
 
 	testData := []struct {

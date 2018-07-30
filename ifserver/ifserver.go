@@ -79,7 +79,7 @@ func New(numReaders int, config *config.Config, sampleRateCache *srcache.Sampler
 		config:          config,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", *ifs.config.IPFIX.Listen)
+	addr, err := net.ResolveUDPAddr("udp", ifs.config.IPFIX.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
@@ -161,7 +161,7 @@ func (ifs *IPFIXServer) processFlowSets(remote net.IP, domainID uint32, flowSets
 
 		if template == nil {
 			templateKey := makeTemplateKey(addr, domainID, set.Header.SetID, keyParts)
-			if *ifs.config.Debug > 0 {
+			if ifs.config.Debug > 0 {
 				glog.Warningf("Template for given FlowSet not found: %s", templateKey)
 			}
 			continue
@@ -247,7 +247,7 @@ func (ifs *IPFIXServer) processFlowSet(template *ipfix.TemplateRecords, records 
 			fl.NextHop = convert.Reverse(r.Values[fm.nextHop])
 		}
 
-		if !*ifs.config.BGPAugmentation.Enabled {
+		if !ifs.config.BGPAugmentation.Enabled {
 			if fm.srcAsn >= 0 {
 				fl.SrcAs = convert.Uint32(r.Values[fm.srcAsn])
 			}
@@ -259,7 +259,7 @@ func (ifs *IPFIXServer) processFlowSet(template *ipfix.TemplateRecords, records 
 
 		fl.Samplerate = ifs.sampleRateCache.Get(agent)
 
-		if *ifs.config.Debug > 2 {
+		if ifs.config.Debug > 2 {
 			Dump(&fl)
 		}
 

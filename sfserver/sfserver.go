@@ -60,7 +60,7 @@ func New(numReaders int, config *config.Config, sampleRateCache *srcache.Sampler
 		sampleRateCache: sampleRateCache,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", *sfs.config.Sflow.Listen)
+	addr, err := net.ResolveUDPAddr("udp", sfs.config.Sflow.Listen)
 	if err != nil {
 		panic(fmt.Sprintf("ResolveUDPAddr: %v", err))
 	}
