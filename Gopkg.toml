@@ -7,15 +7,15 @@
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  version = "1.1.0"
+  version = "1.x"
 
 [[constraint]]
   name = "github.com/soniah/gosnmp"
-  version = "1.13.0"
+  version = "1.x"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.2"
+  version = "1.x"
 
 [[constraint]]
   branch = "master"
@@ -23,11 +23,11 @@
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "1.14.0"
+  version = "1.x"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
-  version = "2.2.1"
+  version = "2.x"
 
 [prune]
   go-tests = true
