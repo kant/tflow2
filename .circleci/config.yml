@@ -11,9 +11,9 @@ jobs:
     working_directory: /go/src/github.com/taktv6/tflow2
     steps:
       - checkout
+      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: dep ensure -v
 
-      # specify any bash command here prefixed with `run: `
-      - run: go get -v -t -d ./...
       - run: go get github.com/mattn/goveralls
       - run: go test -v -cover -race -coverprofile=coverage.out ./...
       - run: goveralls -coverprofile=coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
