@@ -5,9 +5,7 @@ version: 2
 jobs:
   build:
     docker:
-      # specify the version
       - image: circleci/golang:1.10
-
     working_directory: /go/src/github.com/taktv6/tflow2
     steps:
       - checkout
@@ -19,9 +17,23 @@ jobs:
       - run: goveralls -coverprofile=coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - run: go install github.com/taktv6/tflow2
 
+  checks:
+    docker:
+      - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/taktv6/tflow2
+    steps:
+      - checkout
+
       # check goftm
       - run: .circleci/gofmt.sh
 
       # check misspell
       - run: go get github.com/client9/misspell/cmd/misspell
       - run: misspell -error .
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+    - checks
+    - build
